@@ -367,8 +367,8 @@ dated, and they belong to their authors.</p>
 <tr><th>Name</th><th>What it says it is</th><th>Official site</th><th>Code</th><th>Made by</th></tr>
 {''.join(rows)}
 </table></div>
-<p class="small muted">Checked {e(lookalikes['checked'])}. Kasia and KaChat are the next entries in our ledger, under
-the same rules as KaspaChat, sorted A to Z. If we've described your project wrongly, email {e(site["corrections"])} and we'll fix it the
+<p class="small muted">Checked {e(lookalikes['checked'])}. All three are in <a href="/ledger#messaging">our ledger</a>
+under the same rules, sorted A to Z. If we've described your project wrongly, email {e(site["corrections"])} and we'll fix it the
 same week.</p>
 <p class="small"><strong>Again: Kaspaguy and KaspaChat are not associated with Kasia, KaChat or the .kachat names
 project.</strong></p>

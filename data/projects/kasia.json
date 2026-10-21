@@ -1,0 +1,25 @@
+{
+ "id": "kasia",
+ "name": "Kasia",
+ "category": "messaging",
+ "summary": "Encrypted peer-to-peer messenger and protocol on Kaspa. Messages travel inside Kaspa transactions marked ciph_msg, and an optional indexer syncs them across devices. Open source.",
+ "builder": {"name": "K-Kluster (GitHub)", "url": "https://github.com/K-Kluster"},
+ "official_links": [
+  {"label": "kasia.fyi", "url": "https://kasia.fyi"}
+ ],
+ "status": "mainnet",
+ "status_note": "Messages in its ciph_msg format were accepted on mainnet on 21 Oct 2026. Older KaChat clients write the same format, so a single transaction doesn't prove which app sent it. No new code since 27 Jun 2026; the latest release is v0.6.2 (9 Oct 2025).",
+ "self_claimed": false,
+ "last_verified": "2026-10-21",
+ "evidence": [
+  {"kind": "onchain", "label": "Mainnet message transaction (ciph_msg:1:comm), 21 Oct 2026", "url": "https://explorer.kaspa.org/txs/a16e04c05aca6b1d2a5ec3123c07a5ef58bf207f7ab16bc69be9db3ba7331947", "public": true},
+  {"kind": "code", "label": "ciph_msg defined in Kasia's protocol config", "url": "https://github.com/K-Kluster/Kasia/blob/HEAD/src/config/protocol.ts", "public": true},
+  {"kind": "release", "label": "Release v0.6.2 (9 Oct 2025)", "url": "https://github.com/K-Kluster/Kasia/releases/tag/v0.6.2", "public": true}
+ ],
+ "repos": ["https://github.com/K-Kluster/Kasia", "https://github.com/K-Kluster/kasia-indexer"],
+ "code": {"open": "yes", "licence": "ISC", "note": "The app is ISC-licensed. The kasia-indexer repo has no licence file."},
+ "audit": {"status": "none", "note": "None published that we could find.", "links": []},
+ "kcc": null,
+ "token": null,
+ "conflict": "Kasia competes with KaspaChat, which Kaspaguy builds."
+}

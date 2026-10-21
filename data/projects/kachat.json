@@ -1,0 +1,33 @@
+{
+ "id": "kachat",
+ "name": "KaChat",
+ "category": "messaging",
+ "summary": "Encrypted messenger on Kaspa where your wallet is your identity. Messages and KAS payments travel inside Kaspa transactions marked kchat:1. It also has .kachat names, a social feed and chess. Its apps still read the older ciph_msg format, which Kasia also uses.",
+ "builder": {"name": "KaspaSilver and vsmirn0v (GitHub)", "url": "https://github.com/KaspaSilver"},
+ "official_links": [
+  {"label": "home.kachat.app", "url": "https://home.kachat.app"},
+  {"label": "App Store", "url": "https://apps.apple.com/us/app/kachat/id6759102359"},
+  {"label": "Google Play", "url": "https://play.google.com/store/apps/details?id=com.kachat.app"}
+ ],
+ "status": "mainnet",
+ "status_note": "Messages in its kchat:1 format were accepted on mainnet on 21 Oct 2026. Apps for iPhone, Android, desktop and web. Its site says the .kachat names registry went live on mainnet on 16 Oct 2026; we haven't checked the contract yet.",
+ "self_claimed": false,
+ "last_verified": "2026-10-21",
+ "evidence": [
+  {"kind": "onchain", "label": "Mainnet message transaction (kchat:1:comm), 21 Oct 2026", "url": "https://explorer.kaspa.org/txs/e38b619541dc16fd2dbd1e88d28f5c511a7c2f5639020851f2c82e605a3713fc", "public": true},
+  {"kind": "release", "label": "Android release 5.2.1 (13 Oct 2026)", "url": "https://github.com/KaspaSilver/KaChat-Android/releases/tag/5.2.1", "public": true},
+  {"kind": "app", "label": "App Store listing", "url": "https://apps.apple.com/us/app/kachat/id6759102359", "public": true}
+ ],
+ "repos": [
+  "https://github.com/vsmirn0v/KaChat",
+  "https://github.com/KaspaSilver/KaChat-Android",
+  "https://github.com/KaspaSilver/KaChat-Desktop",
+  "https://github.com/KaspaSilver/KaChat-Indexer",
+  "https://github.com/KaspaSilver/kachat-domains"
+ ],
+ "code": {"open": "partial", "licence": "MIT / ISC", "note": "The code is public. The iPhone and desktop apps are MIT and the indexer is ISC; the Android app and the .kachat names contracts have no licence file."},
+ "audit": {"status": "none", "note": "None published that we could find.", "links": []},
+ "kcc": null,
+ "token": null,
+ "conflict": "KaChat competes with KaspaChat, which Kaspaguy builds."
+}

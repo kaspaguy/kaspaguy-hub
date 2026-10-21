@@ -103,6 +103,10 @@ def validate(site, projects, shipped, roadmap, scams, lookalikes):
     for d in scams.get("domains", []):
         check_date(d.get("first_seen"), f"scams: {d.get('domain')}", errs)
     check_date(lookalikes.get("checked"), "lookalikes.json", errs)
+    for x in lookalikes.get("items", []):
+        # a quote without a date is a future correction: project blurbs change
+        check_date(x.get("says_date"), f"lookalikes.json {x.get('name')}: says_date", errs)
+        check_url(x.get("says_source"), f"lookalikes.json {x.get('name')}: says_source", errs)
     return errs
 
 
@@ -143,8 +147,7 @@ document.querySelectorAll('.age[data-date]').forEach(function (el) {
 def page(site, slug, title, body, desc):
     nav = "".join(f'<a href="/{"" if s == "index" else s}"{" aria-current=page" if s == slug else ""}>{e(t)}</a>'
                   for s, t in NAV)
-    banner = ('<div class="staging"><div class="wrap">Staging copy, not public yet. '
-              'Yellow marks a draft that needs Kaspaguy\'s confirmation.</div></div>') if site["staging"] else ""
+    banner = ('<div class="staging"><div class="wrap">Staging copy, not public yet.</div></div>') if site["staging"] else ""
     robots = '<meta name="robots" content="noindex, nofollow">' if site["staging"] else ""
     repo = (link("public data repo", site["data_repo_url"], external=False) if site["data_repo_url"]
             else "a public data repo (published at launch)")
@@ -159,7 +162,7 @@ def page(site, slug, title, body, desc):
 <main><div class="wrap">{body}</div></main>
 <footer><div class="wrap">Kaspaguy keeps a dated, sourced record of what's being built on Kaspa. No paid listings.
 Every page is built from {repo}, so every change is a public commit.
-<a href="/trust">How we work</a> · Contact {e(site["contact"])} · Built {TODAY.isoformat()}</div></footer>
+<a href="/trust">How we work</a> · <a href="/trust#licence">Data CC BY 4.0, code MIT</a> · Contact {e(site["contact"])} · Built {TODAY.isoformat()}</div></footer>
 {AGE_JS}</body></html>
 """
 
@@ -318,14 +321,14 @@ phrase or offer to recover lost funds. Anyone who does is a scammer.</div>
 money.</p>{''.join(entry_card(p, site) for p in dead) or '<div class="empty">None yet.</div>'}"""
 
 
-def p_kaspachat(lookalikes):
+def p_kaspachat(site, lookalikes):
     rows = [f"""<tr><td data-label="Name"><strong>KaspaChat</strong><br><span class="small muted">this one</span></td>
 <td data-label="What it says it is">Private messenger. Hides who talks to whom, not just what's said. Sign up with a 24-word recovery phrase.</td>
 <td data-label="Official site">{link("kaspachat.com", "https://kaspachat.com", external=False)}</td>
 <td data-label="Code">Protocol: {link("kaspaveil.com", "https://kaspaveil.com", external=False)}</td><td data-label="Made by">Kaspaguy</td></tr>"""]
     for x in lookalikes["items"]:
         code = " ".join(link(u.removeprefix("https://github.com/"), u) for u in x["code"])
-        rows.append(f"""<tr><td data-label="Name"><strong>{e(x['name'])}</strong></td><td data-label="What it says it is">“{e(x['says'])}”</td>
+        rows.append(f"""<tr><td data-label="Name"><strong>{e(x['name'])}</strong></td><td data-label="What it says it is">“{e(x['says'])}”<br><span class="small muted">quoted from {link(x['says_source'].removeprefix('https://'), x['says_source'])}, {e(x['says_date'])}</span></td>
 <td data-label="Official site">{link(x['site'].removeprefix('https://'), x['site'])}</td>
 <td data-label="Code">{code}{'<br>' if code else ''}<span class="small muted">{e(x.get('code_note', ''))}</span></td><td data-label="Made by">{e(x['maker'])}</td></tr>""")
     return f"""<h1>KaspaChat</h1>
@@ -349,7 +352,7 @@ report when there is one.</p></div>
 <ul>
 <li>App and website: <strong>kaspachat.com</strong></li>
 <li>Protocol, specification and contracts: <strong>kaspaveil.com</strong></li>
-<li>Maker: <strong>Kaspaguy</strong>, at kaspaguy.com and {e("dev@kaspaguy.com")}</li>
+<li>Maker: <strong>Kaspaguy</strong>, at kaspaguy.com and {e(site["contact"])}</li>
 </ul>
 <p>KaspaChat has no token and no coin sale. If someone offers you a KaspaChat token, it's a scam. We'll never message
 you first or ask for your recovery phrase.</p>
@@ -358,14 +361,15 @@ you first or ask for your recovery phrase.</p>
 <div class="notice"><strong>Kaspaguy is not associated with Kasia or KaChat.</strong> They are separate projects by
 separate teams. We share no code, team or money with them, and neither side endorses the other.</div>
 <p>Several Kaspa messengers have similar names. Here's how to tell them apart, so you end up in the one you meant.
-We link each project's own site so you can go straight there. The descriptions are their own words.</p>
+We link each project's own site so you can go straight there. The descriptions are short quotes in their own words,
+dated, and they belong to their authors.</p>
 <div class="tablewrap"><table class="table stack">
 <tr><th>Name</th><th>What it says it is</th><th>Official site</th><th>Code</th><th>Made by</th></tr>
 {''.join(rows)}
 </table></div>
 <p class="small muted">Checked {e(lookalikes['checked'])}. Kasia and KaChat are the next entries in our ledger, under
-the same rules as KaspaChat, sorted A to Z. If we've described your project wrongly, email dev@kaspaguy.com and we'll fix it the same
-week.</p>
+the same rules as KaspaChat, sorted A to Z. If we've described your project wrongly, email {e(site["corrections"])} and we'll fix it the
+same week.</p>
 <p class="small"><strong>Again: Kaspaguy and KaspaChat are not associated with Kasia, KaChat or the .kachat names
 project.</strong></p>
 """
@@ -419,11 +423,12 @@ including some in this ledger. Here's how we handle it:</p>
 independent has checked it, and it shows no external audit until there is one.</li>
 <li>Entries are sorted A to Z. We never rank KaspaChat, or anything else, above another project.</li>
 <li>We describe other messengers in their own words and link to their official sites.</li>
-<li>{draft("Holdings: Kaspaguy may hold KAS. We will disclose on its entry if we hold the token of any project in the ledger.")}</li>
 </ul>
+<p id="holdings"><strong>Kaspaguy holds KAS.</strong> For a site about Kaspa that's not a conflict, but we'd rather you
+heard it from us. If we ever hold the token of a project in the ledger, that project's entry says so.</p>
 
 <h2 id="corrections">Corrections</h2>
-<p>If something here is wrong or out of date, email {draft(e(site['contact']))}
+<p>If something here is wrong or out of date, email {e(site['corrections'])}
 {"or open an issue in the " + link("public data repo", site['data_repo_url'], external=False) if site['data_repo_url'] else "or, once it's public, open an issue in the data repo"}.
 Send a link to the evidence. We fix confirmed mistakes the same week, and the commit history shows what changed and
 when.</p>
@@ -432,7 +437,18 @@ when.</p>
 <p>Every page is built from plain files in a public repository, one file per project. Every change is a commit, so
 anyone can see who changed what and when. We write our own entries from the evidence. We don't copy other directories:
 KaspaHub's data has no licence, so we link to KaspaHub rather than reuse its list.</p>
-<p>{draft("Our data is free to reuse under CC BY 4.0, with credit to Kaspaguy.")}</p>
+
+<h2 id="licence">Reusing our data</h2>
+<ul>
+<li><strong>Data and text:</strong> the JSON data and our own writing on this site are under
+{link("CC BY 4.0", "https://creativecommons.org/licenses/by/4.0/")}. Reuse them freely, with credit to Kaspaguy and a
+link back.</li>
+<li><strong>Quotes stay theirs:</strong> where we quote a project describing itself, the words belong to that
+project. We quote short excerpts so you can tell projects apart, and CC BY doesn't cover them. Every quote shows where
+it came from and the date we copied it, because project descriptions change.</li>
+<li><strong>Code:</strong> the scripts that build and check this site are under the
+{link("MIT licence", "https://opensource.org/license/mit")}.</li>
+</ul>
 </div>"""
 
 
@@ -466,7 +482,7 @@ def main():
         "shipped": ("What shipped", p_shipped(shipped), "A weekly, sourced log of what went live on Kaspa."),
         "roadmap": ("Roadmap", p_roadmap(roadmap), "Kaspa protocol features labelled live, targeted, research or unsupported."),
         "scams": ("Scams & graveyard", p_scams(scams, projects, site), "Kaspa phishing domains, impersonators and abandoned projects."),
-        "kaspachat": ("KaspaChat", p_kaspachat(lookalikes), "KaspaChat by Kaspaguy, and how to tell it apart from Kasia and KaChat."),
+        "kaspachat": ("KaspaChat", p_kaspachat(site, lookalikes), "KaspaChat by Kaspaguy, and how to tell it apart from Kasia and KaChat."),
         "trust": ("Our rules", p_trust(site), "How Kaspaguy sources entries, why there are no paid listings, and our conflict of interest."),
     }
     for slug, (title, body, desc) in pages.items():

@@ -2,7 +2,7 @@
  "name": "Kaspaguy",
  "base_url": "https://kaspaguy.com",
  "staging": true,
- "contact": "dev@kaspaguy.com",
+ "contact": "hello@kaspaguy.com",
  "data_repo_url": null,
  "policy_version": "1.0",
  "policy_date": "2026-10-21",
@@ -10,6 +10,10 @@
  "stale_days": 90,
  "repo_quiet_days": 60,
  "categories": [
-  {"id": "messaging", "title": "Messaging & social"}
- ]
+  {
+   "id": "messaging",
+   "title": "Messaging & social"
+  }
+ ],
+ "corrections": "corrections@kaspaguy.com"
 }

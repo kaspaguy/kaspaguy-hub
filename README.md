@@ -39,6 +39,11 @@ python3 scripts/check_staleness.py
 Every external link must be https. Dates can't be in the future. Every weekly-log item and every roadmap item needs a
 source. The build stops on any of these errors.
 
+## Licences
+
+Data in `data/` and the site text: CC BY 4.0 (`LICENSE-DATA.md`). Quoted project descriptions are not covered and
+belong to their authors; each needs `says_source` and `says_date`. Code (`build.py`, `scripts/`): MIT (`LICENSE`).
+
 ## Rules
 
 The public rules are on /trust (`p_trust` in build.py). Any change to them bumps `policy_version` and `policy_date` in

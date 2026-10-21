@@ -1,0 +1,17 @@
+{
+ "checked": "2026-10-21",
+ "items": [
+  {"name": "Kasia",
+   "says": "An encrypted, decentralized, peer-to-peer messaging protocol and application built on Kaspa.",
+   "site": "https://kasia.fyi",
+   "code": [],
+   "code_note": "Its site says the code is open source on GitHub.",
+   "maker": "The Kasia team"},
+  {"name": "KaChat (and .kachat names)",
+   "says": "Encrypted, peer-to-peer chat and KAS payments on Kaspa. No accounts, no phone numbers: your wallet is your identity.",
+   "site": "https://home.kachat.app",
+   "code": ["https://github.com/KaspaSilver/KaChat-Android", "https://github.com/KaspaSilver/kachat-domains"],
+   "code_note": "The .kachat names project is part of KaChat; its site links to both.",
+   "maker": "KaspaSilver (GitHub)"}
+ ]
+}

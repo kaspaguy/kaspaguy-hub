@@ -1,0 +1,481 @@
+#!/usr/bin/env python3
+"""Build the Kaspaguy hub (kaspaguy.com) from data/ into dist/. Standard library only.
+
+Every page is rendered from the JSON in data/, so an update is a commit, never a login.
+  build.py            validate data/ and write dist/
+  build.py --check    validate only (run before every commit)
+
+Ages ("checked 12 days ago") are written at build time AND recomputed in the reader's browser,
+so a hub nobody rebuilds still shows its entries going overdue instead of looking fresh.
+"""
+import datetime as dt
+import html
+import json
+import re
+import shutil
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent
+DATA, SITE, DIST = ROOT / "data", ROOT / "site", ROOT / "dist"
+TODAY = dt.date.today()
+STATUSES = {
+    "idea": "Announced, nothing public to try or inspect yet.",
+    "testnet": "Running on a Kaspa testnet. No real KAS at stake.",
+    "mainnet": "Running on Kaspa mainnet with real KAS.",
+    "abandoned": "No activity for 180+ days, or the builders say it has stopped.",
+}
+AUDITS = {"none": "No external audit", "internal": "Internal review only", "external": "External audit"}
+ROADMAP_LABELS = {
+    "live": "On mainnet now.",
+    "targeted": "Has a named release or activation target from the core developers.",
+    "research": "Designed or discussed, with no release target.",
+    "unsupported": "Claimed around the community, with no source from the people building it.",
+}
+NAV = [("index", "Home"), ("ledger", "Ledger"), ("shipped", "What shipped"), ("roadmap", "Roadmap"),
+       ("scams", "Scams & graveyard"), ("kaspachat", "KaspaChat"), ("trust", "Rules")]
+
+e = html.escape
+
+
+def load(name):
+    return json.loads((DATA / name).read_text())
+
+
+# ---------- validation ----------
+
+def check_date(s, where, errs):
+    try:
+        d = dt.date.fromisoformat(s)
+    except (TypeError, ValueError):
+        errs.append(f"{where}: bad date {s!r}")
+        return
+    if d > TODAY:
+        errs.append(f"{where}: date {s} is in the future")
+
+
+def check_url(u, where, errs):
+    if not isinstance(u, str) or not u.startswith("https://"):
+        errs.append(f"{where}: link must start with https:// ({u!r})")
+
+
+def validate(site, projects, shipped, roadmap, scams, lookalikes):
+    errs = []
+    cats = {c["id"] for c in site["categories"]}
+    ids = set()
+    for p in projects:
+        w = f"projects/{p.get('id')}.json"
+        for k in ("id", "name", "category", "summary", "builder", "status", "self_claimed", "last_verified",
+                  "evidence", "code", "audit"):
+            if k not in p:
+                errs.append(f"{w}: missing {k}")
+        if p.get("id") in ids:
+            errs.append(f"{w}: duplicate id")
+        ids.add(p.get("id"))
+        if p.get("category") not in cats:
+            errs.append(f"{w}: unknown category {p.get('category')!r} (add it to site.json)")
+        if p.get("status") not in STATUSES:
+            errs.append(f"{w}: status must be one of {list(STATUSES)}")
+        if p.get("audit", {}).get("status") not in AUDITS:
+            errs.append(f"{w}: audit.status must be one of {list(AUDITS)}")
+        if p.get("audit", {}).get("status") == "external" and not p["audit"].get("links"):
+            errs.append(f"{w}: an external audit needs a link to the report")
+        check_date(p.get("last_verified"), w, errs)
+        if not p.get("evidence"):
+            errs.append(f"{w}: at least one evidence link is required")
+        for x in p.get("evidence", []) + p.get("official_links", []):
+            check_url(x.get("url"), w, errs)
+        for r in p.get("repos", []):
+            if not re.fullmatch(r"https://github\.com/[\w.-]+/[\w.-]+", r):
+                errs.append(f"{w}: repos must be https://github.com/owner/name ({r})")
+        if not p.get("self_claimed") and all(not x.get("public", True) for x in p.get("evidence", [])):
+            errs.append(f"{w}: no public evidence, so self_claimed must be true")
+    for s in shipped:
+        check_date(s.get("week_ending"), f"shipped/{s.get('_file')}", errs)
+        for it in s.get("items", []):
+            if not it.get("sources"):
+                errs.append(f"shipped/{s['_file']}: every item needs a source ({it.get('what')!r})")
+    for r in roadmap:
+        if r.get("label") not in ROADMAP_LABELS:
+            errs.append(f"roadmap: {r.get('feature')!r} label must be one of {list(ROADMAP_LABELS)}")
+        if not r.get("sources"):
+            errs.append(f"roadmap: {r.get('feature')!r} needs a source")
+    for d in scams.get("domains", []):
+        check_date(d.get("first_seen"), f"scams: {d.get('domain')}", errs)
+    check_date(lookalikes.get("checked"), "lookalikes.json", errs)
+    return errs
+
+
+# ---------- helpers ----------
+
+def age_span(date_s, overdue, stale, prefix="checked"):
+    d = dt.date.fromisoformat(date_s)
+    n = (TODAY - d).days
+    cls = "stale" if n > stale else "overdue" if n > overdue else ""
+    return (f'<span class="age {cls}" data-date="{e(date_s)}" data-overdue="{overdue}" data-stale="{stale}" '
+            f'data-prefix="{e(prefix)}">{e(prefix)} {e(date_s)} ({days(n)})</span>')
+
+
+def days(n):
+    return "today" if n <= 0 else "1 day ago" if n == 1 else f"{n} days ago"
+
+
+def link(label, url, external=True):
+    rel = ' rel="nofollow noopener"' if external else ""
+    return f'<a href="{e(url)}"{rel}>{e(label)}</a>'
+
+
+def draft(text):
+    return f'<mark class="draft" title="Draft: needs Kaspaguy\'s confirmation">{text}</mark>'
+
+
+AGE_JS = """<script>
+document.querySelectorAll('.age[data-date]').forEach(function (el) {
+  var n = Math.floor((Date.now() - Date.parse(el.dataset.date + 'T00:00:00Z')) / 864e5);
+  var t = n <= 0 ? 'today' : n === 1 ? '1 day ago' : n + ' days ago';
+  el.textContent = el.dataset.prefix + ' ' + el.dataset.date + ' (' + t + ')';
+  el.classList.toggle('overdue', n > +el.dataset.overdue && n <= +el.dataset.stale);
+  el.classList.toggle('stale', n > +el.dataset.stale);
+});
+</script>"""
+
+
+def page(site, slug, title, body, desc):
+    nav = "".join(f'<a href="/{"" if s == "index" else s}"{" aria-current=page" if s == slug else ""}>{e(t)}</a>'
+                  for s, t in NAV)
+    banner = ('<div class="staging"><div class="wrap">Staging copy, not public yet. '
+              'Yellow marks a draft that needs Kaspaguy\'s confirmation.</div></div>') if site["staging"] else ""
+    robots = '<meta name="robots" content="noindex, nofollow">' if site["staging"] else ""
+    repo = (link("public data repo", site["data_repo_url"], external=False) if site["data_repo_url"]
+            else "a public data repo (published at launch)")
+    full = f"{title} · Kaspaguy" if slug != "index" else "Kaspaguy · What's being built on Kaspa"
+    return f"""<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{e(full)}</title><meta name="description" content="{e(desc)}">{robots}
+<link rel="icon" href="/icon.svg"><link rel="stylesheet" href="/style.css?v={STYLE_V}"></head>
+<body>{banner}
+<header class="top"><div class="wrap"><a class="brand" href="/"><img src="/icon.svg" width="26" height="26" alt="">Kaspaguy</a>
+<nav aria-label="Main">{nav}</nav></div></header>
+<main><div class="wrap">{body}</div></main>
+<footer><div class="wrap">Kaspaguy keeps a dated, sourced record of what's being built on Kaspa. No paid listings.
+Every page is built from {repo}, so every change is a public commit.
+<a href="/trust">How we work</a> · Contact {e(site["contact"])} · Built {TODAY.isoformat()}</div></footer>
+{AGE_JS}</body></html>
+"""
+
+
+# ---------- pages ----------
+
+def p_home(site, projects, shipped):
+    last = shipped[0]["week_ending"] if shipped else None
+    pulse = (f"Last weekly log: {age_span(last, 8, 21, 'week ending')}." if last
+             else "The weekly log starts at launch.")
+    return f"""
+<h1>What's being built on Kaspa, with the evidence.</h1>
+<p class="lead">Kaspaguy builds KaspaChat, a private messenger on Kaspa. We also keep a dated, sourced record of
+what's being built on Kaspa: what stage each project has reached, when we last checked, and the links that prove it.
+No paid listings.</p>
+<p><a class="btn" href="/ledger">Open the ledger</a><a class="btn ghost" href="/trust">Read our rules first</a></p>
+
+<div class="notice">We build KaspaChat, so we have a stake in this. Our own entry follows the same rules as everyone
+else's: it's flagged as self-claimed, and it's never ranked above anyone. <a href="/trust#conflict">How we handle that</a>.</div>
+
+<h2>What's here</h2>
+<div class="grid">
+<a class="card" href="/ledger"><h3>The ledger</h3><p class="muted">Projects with a status (idea, testnet, mainnet or
+abandoned), the date we last checked, evidence links, audit status and a self-claimed flag.
+{len(projects)} {"entry" if len(projects) == 1 else "entries"} so far.</p></a>
+<a class="card" href="/shipped"><h3>What shipped</h3><p class="muted">A short weekly log of what actually went live,
+with a source for every line. {pulse}</p></a>
+<a class="card" href="/roadmap"><h3>Roadmap</h3><p class="muted">Protocol features, each labelled live, targeted,
+research or unsupported, with sources.</p></a>
+<a class="card" href="/scams"><h3>Scams &amp; graveyard</h3><p class="muted">Phishing domains, impersonators and
+projects that stopped.</p></a>
+</div>
+
+<h2>What this isn't</h2>
+<p>It's not a portal or a full directory, and it doesn't rank anything. Other people already do parts of this well,
+so use them too:</p>
+<ul>
+<li>{link("KaspaHub", "https://kaspahub.org")} has the broadest directory of Kaspa projects.</li>
+<li>{link("Kaspa Explained", "https://kaspaexplained.com/status")} labels protocol features by status.</li>
+<li>{link("kaspa.org", "https://kaspa.org")} and the {link("KIPs", "https://github.com/kaspanet/kips")} are the official word on the protocol.</li>
+</ul>
+<p class="muted">We list fewer projects, and for each one we show the evidence and the date we checked it.</p>
+"""
+
+
+def entry_card(p, site):
+    flags = ['<span class="pill flag">self-claimed</span>'] if p["self_claimed"] else []
+    ev = "".join(
+        f'<li>{link(x["label"], x["url"])}{"" if x.get("public", True) else " <span class=muted>(not public: " + e(x.get("note", "private")) + ")</span>"}</li>'
+        for x in p["evidence"])
+    off = " · ".join(link(x["label"], x["url"]) for x in p.get("official_links", []))
+    code = p["code"]
+    code_s = {"yes": "Open source", "partial": "Partly open source", "no": "Closed source"}.get(code.get("open"), "Unknown")
+    if code.get("licence"):
+        code_s += f" ({e(code['licence'])})"
+    if code.get("note"):
+        code_s += f". {e(code['note'])}"
+    au = p["audit"]
+    au_s = e(AUDITS[au["status"]]) + (f". {e(au['note'])}" if au.get("note") else "")
+    au_s += "".join(" " + link("report", u) for u in au.get("links", []))
+    repos = "".join(f"<li>{link(r.removeprefix('https://github.com/'), r)}</li>" for r in p.get("repos", []))
+    rows = [
+        ("Status", f"{e(p.get('status_note', ''))}"),
+        ("Last verified", age_span(p["last_verified"], site["overdue_days"], site["stale_days"])),
+        ("Built by", link(p["builder"]["name"], p["builder"]["url"]) if p["builder"].get("url") else e(p["builder"]["name"])),
+        ("Official links", off or '<span class="muted">none</span>'),
+        ("Evidence", f"<ul style='margin:0;padding-left:18px'>{ev}</ul>"),
+        ("Code", code_s + (f"<ul style='margin:0;padding-left:18px'>{repos}</ul>" if repos else "")),
+        ("Audit", au_s),
+        ("KCC standard", e(p["kcc"]) if p.get("kcc") else '<span class="muted">none declared</span>'),
+        ("Token", e(p["token"]) if p.get("token") else '<span class="muted">none</span>'),
+    ]
+    if p["self_claimed"]:
+        rows.insert(2, ("Self-claimed", e(p.get("self_claimed_note") or "Only the builders' own statements back this up so far.")))
+    if p.get("conflict"):
+        rows.append(("Our interest", e(p["conflict"])))
+    dl = "".join(f"<dt>{k}</dt><dd>{v}</dd>" for k, v in rows)
+    return f"""<article class="card entry" id="{e(p['id'])}"><header><h3>{e(p['name'])}</h3>
+<span class="pill {e(p['status'])}">{e(p['status'])}</span>{''.join(flags)}</header>
+<p>{e(p['summary'])}</p><dl>{dl}</dl></article>"""
+
+
+def p_ledger(site, projects):
+    legend = "".join(f'<li><span class="pill {k}">{k}</span> {e(v)}</li>' for k, v in STATUSES.items())
+    out = [f"""<h1>The ledger</h1>
+<p class="lead">Kaspa projects, each with its stage, the date we last checked it and the evidence. Sorted A to Z,
+never by who paid or who we like.</p>
+<ul style="list-style:none;padding:0">{legend}
+<li><span class="pill flag">self-claimed</span> Only the builders' own statements back this up so far.</li></ul>
+<p class="small muted">We re-check every entry at least monthly. A check older than {site['overdue_days']} days turns
+yellow, and one older than {site['stale_days']} days turns red, so you can see when we fall behind.
+<a href="/trust#rules">Full rules</a>.</p>"""]
+    for c in site["categories"]:
+        ps = sorted((p for p in projects if p["category"] == c["id"] and p["status"] != "abandoned"),
+                    key=lambda p: p["name"].lower())
+        out.append(f'<h2 id="{e(c["id"])}">{e(c["title"])}</h2>')
+        out.append("".join(entry_card(p, site) + "<div style='height:14px'></div>" for p in ps)
+                   or '<div class="empty">No entries yet.</div>')
+    if len(projects) == 1:
+        out.append('<div class="notice">The first entry is our own, so you can see the rules applied to us before '
+                   'anyone else. More messaging and social projects come next.</div>')
+    return "".join(out)
+
+
+def p_shipped(shipped):
+    if not shipped:
+        body = '<div class="empty">No weeks logged yet. The first log comes out the week the site goes public.</div>'
+    else:
+        parts = []
+        for s in shipped:
+            items = "".join(
+                f"<li><strong>{e(it.get('project', ''))}</strong> {e(it['what'])} "
+                + " ".join(link(x["label"], x["url"]) for x in it["sources"]) + "</li>" for it in s.get("items", []))
+            parts.append(f'<section class="card" id="w{e(s["week_ending"])}"><h3>Week ending {e(s["week_ending"])}</h3>'
+                         + (f"<ul>{items}</ul>" if items else f"<p class='muted'>{e(s.get('note') or 'Nothing shipped that we could verify.')}</p>")
+                         + "</section><div style='height:14px'></div>")
+        body = "".join(parts)
+    head = (f"Latest: {age_span(shipped[0]['week_ending'], 8, 21, 'week ending')}." if shipped else "")
+    return f"""<h1>What shipped</h1>
+<p class="lead">Every week, a short, dated list of what actually went live on Kaspa, each line with its source.
+A quiet week says so. A missed week shows as a gap.</p><p class="muted small">{head}</p>{body}"""
+
+
+def p_roadmap(roadmap):
+    legend = "".join(f"<li><strong>{k}</strong>: {e(v)}</li>" for k, v in ROADMAP_LABELS.items())
+    if roadmap:
+        rows = "".join(
+            f"<tr><td>{e(r['feature'])}</td><td><strong>{e(r['label'])}</strong></td><td>{e(r.get('note', ''))}</td>"
+            f"<td>{' '.join(link(x['label'], x['url']) for x in r['sources'])}</td></tr>" for r in roadmap)
+        table = (f'<div class="tablewrap"><table class="table"><tr><th>Feature</th><th>Label</th><th>Notes</th>'
+                 f'<th>Sources</th></tr>{rows}</table></div>')
+    else:
+        table = '<div class="empty">The roadmap table is being sourced. Every item will link to the people building it.</div>'
+    return f"""<h1>Roadmap</h1>
+<p class="lead">Kaspa protocol features, each with a label and a source, so you can tell what's live from what's
+only talked about.</p><ul>{legend}</ul>{table}"""
+
+
+def p_scams(scams, projects, site):
+    dom = "".join(f"<tr><td><code>{e(d['domain'])}</code></td><td>{e(d.get('pretends_to_be', ''))}</td>"
+                  f"<td>{e(d['first_seen'])}</td><td>{' '.join(link(x['label'], x['url']) for x in d.get('sources', []))}</td></tr>"
+                  for d in scams.get("domains", []))
+    imp = "".join(f"<li>{e(i['what'])} {' '.join(link(x['label'], x['url']) for x in i.get('sources', []))}</li>"
+                  for i in scams.get("impersonation", []))
+    dead = [p for p in projects if p["status"] == "abandoned"]
+    return f"""<h1>Scams &amp; graveyard</h1>
+<p class="lead">Fake sites, impersonators and projects that stopped. Nobody official keeps a list like this for
+Kaspa, so we do.</p>
+<div class="notice">Kaspa developers, wallet makers and Kaspaguy will never message you first, ask for your recovery
+phrase or offer to recover lost funds. Anyone who does is a scammer.</div>
+<h2>Phishing domains</h2>
+{'<div class="tablewrap"><table class="table"><tr><th>Domain</th><th>Pretends to be</th><th>First seen</th><th>Source</th></tr>' + dom + '</table></div>' if dom else '<div class="empty">None listed yet.</div>'}
+<h2>Impersonation</h2>{'<ul>' + imp + '</ul>' if imp else '<div class="empty">None listed yet.</div>'}
+<h2>Graveyard</h2>
+<p class="muted small">Projects from the ledger marked abandoned. They stay here so you can check before you send them
+money.</p>{''.join(entry_card(p, site) for p in dead) or '<div class="empty">None yet.</div>'}"""
+
+
+def p_kaspachat(lookalikes):
+    rows = [f"""<tr><td data-label="Name"><strong>KaspaChat</strong><br><span class="small muted">this one</span></td>
+<td data-label="What it says it is">Private messenger. Hides who talks to whom, not just what's said. Sign up with a 24-word recovery phrase.</td>
+<td data-label="Official site">{link("kaspachat.com", "https://kaspachat.com", external=False)}</td>
+<td data-label="Code">Protocol: {link("kaspaveil.com", "https://kaspaveil.com", external=False)}</td><td data-label="Made by">Kaspaguy</td></tr>"""]
+    for x in lookalikes["items"]:
+        code = " ".join(link(u.removeprefix("https://github.com/"), u) for u in x["code"])
+        rows.append(f"""<tr><td data-label="Name"><strong>{e(x['name'])}</strong></td><td data-label="What it says it is">“{e(x['says'])}”</td>
+<td data-label="Official site">{link(x['site'].removeprefix('https://'), x['site'])}</td>
+<td data-label="Code">{code}{'<br>' if code else ''}<span class="small muted">{e(x.get('code_note', ''))}</span></td><td data-label="Made by">{e(x['maker'])}</td></tr>""")
+    return f"""<h1>KaspaChat</h1>
+<p class="lead">A private messenger built on Kaspa. You sign up with a 24-word recovery phrase instead of a phone
+number or email. Messages are end-to-end encrypted on your device, and nobody, including us, can read them or see who
+you talk to.</p>
+<p><a class="btn" href="https://kaspachat.com">Go to kaspachat.com</a><a class="btn ghost" href="/ledger#kaspachat">See its ledger entry</a></p>
+
+<h2>Where it stands</h2>
+<div class="grid">
+<div class="card"><h3>Status: testnet</h3><p class="muted">KaspaChat runs on Kaspa testnet-10 and isn't on mainnet
+yet. It runs in your browser on a phone or computer. The Android and iPhone apps aren't released yet.</p></div>
+<div class="card"><h3>What's open source</h3><p class="muted">The Kaspaveil protocol (its encryption and test vectors)
+and its contracts are open source under AGPL-3.0 at kaspaveil.com. The KaspaChat apps and Kaspaguy's servers are
+closed source.</p></div>
+<div class="card"><h3>Audit</h3><p class="muted">No external audit yet, only our own review. The ledger will link the
+report when there is one.</p></div>
+</div>
+
+<h2>The only official addresses</h2>
+<ul>
+<li>App and website: <strong>kaspachat.com</strong></li>
+<li>Protocol, specification and contracts: <strong>kaspaveil.com</strong></li>
+<li>Maker: <strong>Kaspaguy</strong>, at kaspaguy.com and {e("dev@kaspaguy.com")}</li>
+</ul>
+<p>KaspaChat has no token and no coin sale. If someone offers you a KaspaChat token, it's a scam. We'll never message
+you first or ask for your recovery phrase.</p>
+
+<h2 id="which-one">Which one is this?</h2>
+<div class="notice"><strong>Kaspaguy is not associated with Kasia or KaChat.</strong> They are separate projects by
+separate teams. We share no code, team or money with them, and neither side endorses the other.</div>
+<p>Several Kaspa messengers have similar names. Here's how to tell them apart, so you end up in the one you meant.
+We link each project's own site so you can go straight there. The descriptions are their own words.</p>
+<div class="tablewrap"><table class="table stack">
+<tr><th>Name</th><th>What it says it is</th><th>Official site</th><th>Code</th><th>Made by</th></tr>
+{''.join(rows)}
+</table></div>
+<p class="small muted">Checked {e(lookalikes['checked'])}. Kasia and KaChat are the next entries in our ledger, under
+the same rules as KaspaChat, sorted A to Z. If we've described your project wrongly, email dev@kaspaguy.com and we'll fix it the same
+week.</p>
+<p class="small"><strong>Again: Kaspaguy and KaspaChat are not associated with Kasia, KaChat or the .kachat names
+project.</strong></p>
+"""
+
+
+def p_trust(site):
+    return f"""<div class="doc">
+<h1>Our rules</h1>
+<p class="lead">How we decide what goes in, how we label it, and why we're not paid to. We published these before the
+first entry. Version {e(site['policy_version'])}, {e(site['policy_date'])}.</p>
+
+<h2 id="rules">How an entry gets its status</h2>
+<p>Every project in the ledger has one status, and each status needs evidence you can check yourself:</p>
+<ul>
+<li><span class="pill mainnet">mainnet</span> a mainnet transaction or covenant you can look up in a block explorer,
+or a public app that uses real KAS.</li>
+<li><span class="pill testnet">testnet</span> a public deployment on a Kaspa testnet.</li>
+<li><span class="pill idea">idea</span> announced, with nothing public to try or inspect yet.</li>
+<li><span class="pill abandoned">abandoned</span> no code or on-chain activity for 180 days and no answer from the
+team, or the team says it has stopped. These move to the <a href="/scams">graveyard</a>, they aren't deleted.</li>
+</ul>
+<p>We prefer evidence in this order: on-chain records, public code (a repository, commit or release), the team's own
+documentation, then an independent write-up. If the only backing is the builders' own announcement, the entry carries
+a <span class="pill flag">self-claimed</span> flag until someone independent can confirm it.</p>
+
+<h2>Dates and staleness</h2>
+<ul>
+<li>"Last verified" is the day we opened the evidence ourselves, not the day someone told us about it.</li>
+<li>We re-check every entry at least once a month. A check older than {site['overdue_days']} days shows in yellow,
+and one older than {site['stale_days']} days in red. These ages update in your browser, so a page we forgot to rebuild
+still shows its age.</li>
+<li>A script checks each listed GitHub repository and flags any with no new code for {site['repo_quiet_days']} days,
+so we know what to re-check first.</li>
+<li>The weekly "what shipped" log is dated. If we miss a week, you'll see the gap.</li>
+</ul>
+
+<h2>Audits and standards</h2>
+<p>We don't audit projects. We report what exists: no external audit, internal review only, or an external audit with
+a link to the report. If a project uses a Kaspa covenant standard (KCC), we note the version it says it follows.</p>
+
+<h2 id="paid">No paid listings</h2>
+<p>We don't accept money, tokens, airdrops, allocations or referral fees to list a project, change its status or
+change what we write about it. There are no ads on this site. If that ever changes, this page will say so first, with
+the date.</p>
+
+<h2 id="conflict">Our conflict of interest</h2>
+<p>Kaspaguy builds KaspaChat, a private messenger on Kaspa. That makes us a competitor of other Kaspa messengers,
+including some in this ledger. Here's how we handle it:</p>
+<ul>
+<li>KaspaChat's entry follows the same rules as every other entry. It carries the self-claimed flag until someone
+independent has checked it, and it shows no external audit until there is one.</li>
+<li>Entries are sorted A to Z. We never rank KaspaChat, or anything else, above another project.</li>
+<li>We describe other messengers in their own words and link to their official sites.</li>
+<li>{draft("Holdings: Kaspaguy may hold KAS. We will disclose on its entry if we hold the token of any project in the ledger.")}</li>
+</ul>
+
+<h2 id="corrections">Corrections</h2>
+<p>If something here is wrong or out of date, email {draft(e(site['contact']))}
+{"or open an issue in the " + link("public data repo", site['data_repo_url'], external=False) if site['data_repo_url'] else "or, once it's public, open an issue in the data repo"}.
+Send a link to the evidence. We fix confirmed mistakes the same week, and the commit history shows what changed and
+when.</p>
+
+<h2>Where the data comes from</h2>
+<p>Every page is built from plain files in a public repository, one file per project. Every change is a commit, so
+anyone can see who changed what and when. We write our own entries from the evidence. We don't copy other directories:
+KaspaHub's data has no licence, so we link to KaspaHub rather than reuse its list.</p>
+<p>{draft("Our data is free to reuse under CC BY 4.0, with credit to Kaspaguy.")}</p>
+</div>"""
+
+
+STYLE_V = ""
+
+
+def main():
+    global STYLE_V
+    import hashlib
+    STYLE_V = hashlib.md5((SITE / "style.css").read_bytes()).hexdigest()[:8]
+    site = load("site.json")
+    projects = [json.loads(f.read_text()) for f in sorted((DATA / "projects").glob("*.json"))]
+    shipped = []
+    for f in sorted((DATA / "shipped").glob("*.json"), reverse=True):
+        s = json.loads(f.read_text())
+        s["_file"] = f.name
+        shipped.append(s)
+    roadmap, scams, lookalikes = load("roadmap.json"), load("scams.json"), load("lookalikes.json")
+    errs = validate(site, projects, shipped, roadmap, scams, lookalikes)
+    if errs:
+        sys.exit("data errors:\n  " + "\n  ".join(errs))
+    print(f"data ok: {len(projects)} projects, {len(shipped)} weekly logs, {len(roadmap)} roadmap items")
+    if "--check" in sys.argv:
+        return
+    if DIST.exists():
+        shutil.rmtree(DIST)
+    DIST.mkdir()
+    pages = {
+        "index": ("Home", p_home(site, projects, shipped), "A dated, sourced record of what's being built on Kaspa. No paid listings."),
+        "ledger": ("The ledger", p_ledger(site, projects), "Kaspa projects with status, last-verified date, evidence and audit status."),
+        "shipped": ("What shipped", p_shipped(shipped), "A weekly, sourced log of what went live on Kaspa."),
+        "roadmap": ("Roadmap", p_roadmap(roadmap), "Kaspa protocol features labelled live, targeted, research or unsupported."),
+        "scams": ("Scams & graveyard", p_scams(scams, projects, site), "Kaspa phishing domains, impersonators and abandoned projects."),
+        "kaspachat": ("KaspaChat", p_kaspachat(lookalikes), "KaspaChat by Kaspaguy, and how to tell it apart from Kasia and KaChat."),
+        "trust": ("Our rules", p_trust(site), "How Kaspaguy sources entries, why there are no paid listings, and our conflict of interest."),
+    }
+    for slug, (title, body, desc) in pages.items():
+        (DIST / f"{slug}.html").write_text(page(site, slug, title, body, desc))
+    for f in SITE.iterdir():
+        shutil.copy(f, DIST / f.name)
+    (DIST / "robots.txt").write_text("User-agent: *\nDisallow: /\n" if site["staging"] else "User-agent: *\nAllow: /\n")
+    print(f"wrote {len(pages)} pages to {DIST}")
+
+
+if __name__ == "__main__":
+    main()

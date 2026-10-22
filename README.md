@@ -7,7 +7,7 @@ The site is static and built from the JSON in `data/`. Updating it means making 
 
 | Path | What it holds |
 |---|---|
-| `data/site.json` | Site settings: staging flag, contact, policy version, staleness thresholds, ledger categories |
+| `data/site.json` | Site settings: staging flag (banner), indexable flag (search engines), contact, policy version, staleness thresholds, ledger categories |
 | `data/projects/<id>.json` | One ledger entry per project (see the fields below) |
 | `data/shipped/<YYYY-MM-DD>.json` | One weekly "what shipped" log, named for the week's last day |
 | `data/roadmap.json` | Protocol features labelled live / targeted / research / unsupported |

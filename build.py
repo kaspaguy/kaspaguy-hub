@@ -186,7 +186,8 @@ def page(site, slug, title, body, desc):
     nav = "".join(f'<a href="/{"" if s == "index" else s}"{" aria-current=page" if s == slug else ""}>{e(t)}</a>'
                   for s, t in NAV)
     banner = ('<div class="staging"><div class="wrap">Staging copy, not public yet.</div></div>') if site["staging"] else ""
-    robots = '<meta name="robots" content="noindex, nofollow">' if site["staging"] else ""
+    # "indexable" is separate from "staging": the site can go public quietly, unindexed, before it's announced
+    robots = '' if site.get("indexable") else '<meta name="robots" content="noindex, nofollow">'
     repo = (link("public data repo", site["data_repo_url"], external=False) if site["data_repo_url"]
             else "a public data repo (published at launch)")
     full = f"{title} · Kaspaguy" if slug != "index" else "Kaspaguy · What's being built on Kaspa"
@@ -623,7 +624,7 @@ def main():
         (DIST / f"{slug}.html").write_text(page(site, slug, title, body, desc))
     for f in SITE.iterdir():
         shutil.copy(f, DIST / f.name)
-    (DIST / "robots.txt").write_text("User-agent: *\nDisallow: /\n" if site["staging"] else "User-agent: *\nAllow: /\n")
+    (DIST / "robots.txt").write_text("User-agent: *\nAllow: /\n" if site.get("indexable") else "User-agent: *\nDisallow: /\n")
     print(f"wrote {len(pages)} pages to {DIST}")
 
 

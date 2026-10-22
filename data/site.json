@@ -2,6 +2,7 @@
  "name": "Kaspaguy",
  "base_url": "https://kaspaguy.com",
  "staging": true,
+ "indexable": false,
  "contact": "hello@kaspaguy.com",
  "data_repo_url": null,
  "policy_version": "1.0",

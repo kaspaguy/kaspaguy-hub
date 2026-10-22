@@ -1,10 +1,10 @@
 {
  "name": "Kaspaguy",
  "base_url": "https://kaspaguy.com",
- "staging": true,
+ "staging": false,
  "indexable": false,
  "contact": "hello@kaspaguy.com",
- "data_repo_url": null,
+ "data_repo_url": "https://github.com/kaspaguy/kaspaguy-hub",
  "policy_version": "1.0",
  "policy_date": "2026-10-21",
  "overdue_days": 35,

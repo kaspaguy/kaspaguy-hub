@@ -135,6 +135,10 @@ def validate(site, projects, shipped, roadmap, scams, lookalikes):
                 check_date(x.get("date"), f"{w} source", errs)
             if key == "confirmed" and not any(x.get("third_party") for x in d.get("sources", [])):
                 errs.append(f"{w}: confirmed phishing needs a documented third-party report (third_party: true)")
+            if d.get("state"):
+                if d["state"] not in ("offline", "online"):
+                    errs.append(f"{w}: state must be offline or online")
+                check_date(d.get("state_checked"), f"{w} state_checked", errs)
             if key == "unverified" and not d.get("unknown"):
                 errs.append(f"{w}: say what we don't know yet (unknown)")
     for k in scams:
@@ -182,18 +186,30 @@ document.querySelectorAll('.age[data-date]').forEach(function (el) {
 </script>"""
 
 
-def page(site, slug, title, body, desc):
+def page(site, slug, title, body, desc, listed=True):
     nav = "".join(f'<a href="/{"" if s == "index" else s}"{" aria-current=page" if s == slug else ""}>{e(t)}</a>'
                   for s, t in NAV)
     banner = ('<div class="staging"><div class="wrap">Staging copy, not public yet.</div></div>') if site["staging"] else ""
     # "indexable" is separate from "staging": the site can go public quietly, unindexed, before it's announced
-    robots = '' if site.get("indexable") else '<meta name="robots" content="noindex, nofollow">'
+    robots = '' if site.get("indexable") and listed else '<meta name="robots" content="noindex, nofollow">'
     repo = (link("public data repo", site["data_repo_url"], external=False) if site["data_repo_url"]
             else "a public data repo (published at launch)")
     full = f"{title} · Kaspaguy" if slug != "index" else "Kaspaguy · What's being built on Kaspa"
+    url = site["base_url"] + ("/" if slug == "index" else f"/{slug}")
+    img = site["base_url"] + "/og.png"
+    # the preview people see when a page is shared in Discord, Telegram or on X
+    social = ((f'<link rel="canonical" href="{url}">' if listed else "") + f'<meta property="og:type" content="website">'
+              f'<meta property="og:site_name" content="Kaspaguy"><meta property="og:title" content="{e(full)}">'
+              f'<meta property="og:description" content="{e(desc)}">'
+              + (f'<meta property="og:url" content="{url}">' if listed else "") +
+              f'<meta property="og:image" content="{img}"><meta property="og:image:width" content="1200">'
+              f'<meta property="og:image:height" content="630"><meta property="og:image:alt" '
+              f'content="Kaspaguy: what\'s being built on Kaspa, with the evidence. Dated, sourced, no paid listings.">'
+              f'<meta name="twitter:card" content="summary_large_image">')
     return f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{e(full)}</title><meta name="description" content="{e(desc)}">{robots}
+{social}
 <link rel="icon" href="/icon.svg"><link rel="stylesheet" href="/style.css?v={STYLE_V}"></head>
 <body>{banner}
 <header class="top"><div class="wrap"><a class="brand" href="/"><img src="/icon.svg" width="26" height="26" alt="">Kaspaguy</a>
@@ -201,7 +217,7 @@ def page(site, slug, title, body, desc):
 <main><div class="wrap">{body}</div></main>
 <footer><div class="wrap">Kaspaguy keeps a dated, sourced record of what's being built on Kaspa. No paid listings.
 Every page is built from {repo}, so every change is a public commit.
-<a href="/trust">How we work</a> · <a href="/trust#licence">Data CC BY 4.0, code MIT</a> · Contact {e(site["contact"])} · Built {TODAY.isoformat()}</div></footer>
+<a href="/trust">How we work</a> · <a href="/trust#licence">Data CC BY 4.0, code MIT</a> · Contact {e(site["contact"])} · <a href="/trust#privacy">No cookies or trackers</a> · Built {TODAY.isoformat()}</div></footer>
 {AGE_JS}</body></html>
 """
 
@@ -400,7 +416,9 @@ def scam_item(d, key):
     body = [f"<p>{e(d['what'])}</p>"]
     if key == "unverified":
         body.append(f"<p class='small'><strong>Not known yet:</strong> {e(d['unknown'])}</p>")
-    return (f"<div class='card'><h3><code>{e(d['name'])}</code></h3>{''.join(body)}"
+    state = (f" <span class='pill'>{'now offline' if d['state'] == 'offline' else 'still online'}, checked {e(d['state_checked'])}</span>"
+             if d.get("state") else "")
+    return (f"<div class='card'><h3><code>{e(d['name'])}</code>{state}</h3>{''.join(body)}"
             f"<p class='small muted'>Added {e(d['added'])}. Sources: {src}</p></div><div style='height:12px'></div>")
 
 
@@ -582,6 +600,12 @@ it came from and the date we copied it, because project descriptions change.</li
 <li><strong>Code:</strong> the scripts that build and check this site are under the
 {link("MIT licence", "https://opensource.org/license/mit")}.</li>
 </ul>
+
+<h2 id="privacy">What we record about visitors</h2>
+<p>We count page views from our own server logs. The logs don't record IP addresses, and we delete them after
+30 days. What we keep after that is counts only: views per page per day, addresses that came back "not found" (so we
+can fix broken links), and which websites linked to us. This site has no cookies, no trackers and no third-party
+scripts. Requests pass through Cloudflare, which protects the server and handles traffic under its own privacy policy.</p>
 </div>"""
 
 
@@ -622,9 +646,20 @@ def main():
     }
     for slug, (title, body, desc) in pages.items():
         (DIST / f"{slug}.html").write_text(page(site, slug, title, body, desc))
+    nf = page(site, "404", "Page not found", """<h1>Page not found</h1>
+<p class="lead">There's nothing at this address. If a link on our site brought you here, tell us at """
+              + e(site["corrections"]) + """ and we'll fix it.</p>
+<p><a class="btn" href="/ledger">Open the ledger</a><a class="btn ghost" href="/">Home</a></p>""",
+              "Page not found.", listed=False)
+    (DIST / "404.html").write_text(nf)
+    locs = "".join(f"<url><loc>{site['base_url']}{'/' if s == 'index' else '/' + s}</loc><lastmod>{TODAY.isoformat()}</lastmod></url>"
+                   for s in pages)
+    (DIST / "sitemap.xml").write_text('<?xml version="1.0" encoding="UTF-8"?>\n'
+                                      f'<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">{locs}</urlset>\n')
     for f in SITE.iterdir():
         shutil.copy(f, DIST / f.name)
-    (DIST / "robots.txt").write_text("User-agent: *\nAllow: /\n" if site.get("indexable") else "User-agent: *\nDisallow: /\n")
+    (DIST / "robots.txt").write_text(f"User-agent: *\nAllow: /\nSitemap: {site['base_url']}/sitemap.xml\n"
+                                     if site.get("indexable") else "User-agent: *\nDisallow: /\n")
     print(f"wrote {len(pages)} pages to {DIST}")
 
 

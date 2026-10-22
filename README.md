@@ -16,6 +16,8 @@ The site is static and built from the JSON in `data/`. Updating it means making 
 | `site/` | Static assets copied as-is (style.css, icon.svg) |
 | `build.py` | Validates `data/` and writes `dist/` |
 | `scripts/check_staleness.py` | Lists overdue verifications (action) and quiet repos (information); writes `data/checks/repo_activity.json` |
+| `scripts/pageviews.py` | Daily page-view counts from the IP-free nginx log (runs from cron on the server) |
+| `assets-src/og.html` | Source of `site/og.png`, the 1200×630 social preview image |
 | `scripts/find_payload_txs.py` | Scans our own mainnet node for transactions carrying a project's payload marker |
 
 ## Workflow
@@ -45,7 +47,10 @@ Only `last_verified` changes a card's colour. Code activity in `data/checks/repo
 
 `data/scams.json` has three sections: `confirmed`, `unverified` and `label`. Every item needs `name`, `what`, `added`
 and dated `sources`. A `confirmed` item needs at least one source marked `third_party: true`, and an `unverified` item
-needs an `unknown` line.
+needs an `unknown` line. An optional `state` (`offline` or `online`) with `state_checked` shows in the item's title.
+
+Weekly logs in `data/shipped/` are named by the Sunday the week ends. The current week can be published early with
+`in_progress: true` and an `updated` date. A week written up after it ended carries `compiled`, its write-up date.
 
 Every external link must be https. Dates can't be in the future. Every weekly-log item and every roadmap item needs a
 source. The build stops on any of these errors.

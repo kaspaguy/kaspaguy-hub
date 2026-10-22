@@ -1,34 +1,78 @@
 {
  "confirmed": [
-  {"name": "wallet.kaspenet.io",
-   "what": "A lookalike of the Kaspa web wallet at wallet.kaspanet.io: \"kaspenet\" instead of \"kaspanet\". PhishDestroy reports it as a crypto drainer posing as Kaspa Wallet, built to get people to connect their wallets and approve transactions that empty them. It was registered on 25 Nov 2025 and no longer resolves (we checked on 22 Oct 2026). If you approved anything on it, move your funds to a new wallet.",
+  {
+   "name": "wallet.kaspenet.io",
+   "what": "Offline now: the domain no longer resolves (we checked on 22 Oct 2026). It was a lookalike of the Kaspa web wallet at wallet.kaspanet.io, with \"kaspenet\" instead of \"kaspanet\". PhishDestroy reports it as a crypto drainer posing as Kaspa Wallet, built to get people to connect their wallets and approve transactions that empty them. It was registered on 25 Nov 2025. If you approved anything on it, move your funds to a new wallet.",
    "added": "2026-10-22",
    "sources": [
-    {"label": "PhishDestroy report", "url": "https://phishdestroy.io/domain/wallet.kaspenet.io", "date": "2026-07-07", "third_party": true}
-   ]},
-  {"name": "kaspawallet.net",
-   "what": "A site titled \"Kaspa Wallet\" that is not run by Kaspa's developers. PhishDestroy lists it as a crypto scam (first detected on 25 Aug 2025), and 15 of 89 VirusTotal engines flag it. PhishDestroy's automated brand label names a different coin, but the page title it recorded is \"Kaspa Wallet\". The domain still resolved when we checked on 22 Oct 2026.",
+    {
+     "label": "PhishDestroy report",
+     "url": "https://phishdestroy.io/domain/wallet.kaspenet.io",
+     "date": "2026-07-07",
+     "third_party": true
+    }
+   ],
+   "state": "offline",
+   "state_checked": "2026-10-22"
+  },
+  {
+   "name": "kaspawallet.net",
+   "what": "Still online when we checked on 22 Oct 2026. A site titled \"Kaspa Wallet\" that is not run by Kaspa's developers. PhishDestroy lists it as a crypto scam (first detected on 25 Aug 2025), and 15 of 89 VirusTotal engines flag it. PhishDestroy's automated brand label names a different coin, but the page title it recorded is \"Kaspa Wallet\".",
    "added": "2026-10-22",
    "sources": [
-    {"label": "PhishDestroy report", "url": "https://phishdestroy.io/domain/kaspawallet.net", "date": "2025-08-25", "third_party": true}
-   ]}
+    {
+     "label": "PhishDestroy report",
+     "url": "https://phishdestroy.io/domain/kaspawallet.net",
+     "date": "2025-08-25",
+     "third_party": true
+    }
+   ],
+   "state": "online",
+   "state_checked": "2026-10-22"
+  }
  ],
  "unverified": [
-  {"name": "kasplex.io",
+  {
+   "name": "kasplex.io",
    "what": "Kasplex, the Kaspa token protocol and layer 2, uses kasplex.org: its GitHub organisation links there. Some search summaries also mention kasplex.io. That domain was registered on 6 Feb 2024 and has no website: it didn't resolve when we checked on 22 Oct 2026. Use kasplex.org.",
    "unknown": "Who registered kasplex.io and whether it has anything to do with Kasplex. A statement from Kasplex either way would settle it.",
    "added": "2026-10-22",
    "sources": [
-    {"label": "Kasplex on GitHub (links to kasplex.org)", "url": "https://github.com/kasplex", "date": "2026-10-22"}
-   ]}
+    {
+     "label": "Kasplex on GitHub (links to kasplex.org)",
+     "url": "https://github.com/kasplex",
+     "date": "2026-10-22"
+    }
+   ]
+  }
  ],
  "label": [
-  {"name": "BlockDAG (BDAG)",
-   "what": "A separate project with its own coin, BDAG, sold through a long-running presale on its own website. It is not part of Kaspa and isn't built on Kaspa. \"BlockDAG\" is also the general name for the kind of ledger Kaspa uses, and promotional articles pitch BDAG as the next Kaspa. Kaspa itself had no presale.",
+  {
+   "name": "BlockDAG (BDAG)",
+   "what": "A separate project with its own coin, BDAG. It is not part of Kaspa and isn't built on Kaspa. \"BlockDAG\" is also the general name for the kind of ledger Kaspa uses, which makes the name easy to borrow. What BlockDAG says about itself: on 22 Oct 2026 its website called itself the \"Best Crypto Presale 2026\" and offered BDAG for sale. How it rides Kaspa's name: on 15 Dec 2024 Analytics Insight published \"BlockDAG vs. Kaspa: Could BDAG Be the Next Big Crypto Breakthrough?\" under the byline \"IndustryTrends\", ending with BlockDAG's purchase and Telegram links. Analytics Insight's own page says it charges $110 to distribute press releases. We don't know whether this article was paid for. We cite it as an example of the pattern this section is about, not as a source we vouch for. Kaspa itself had no presale.",
    "added": "2026-10-22",
    "sources": [
-    {"label": "BlockDAG's own site (\"Buy BDAG\")", "url": "https://blockdag.network/", "date": "2026-10-22"},
-    {"label": "Analytics Insight, \"BlockDAG vs. Kaspa\"", "url": "https://www.analyticsinsight.net/cryptocurrency-analytics-insight/blockdag-vs-kaspa-could-bdag-be-the-next-big-crypto-breakthrough", "date": "2024-12-15"}
-   ]}
+    {
+     "label": "BlockDAG's website, describing itself",
+     "url": "https://blockdag.network/",
+     "date": "2026-10-22"
+    },
+    {
+     "label": "Analytics Insight article (\"IndustryTrends\" byline)",
+     "url": "https://www.analyticsinsight.net/cryptocurrency-analytics-insight/blockdag-vs-kaspa-could-bdag-be-the-next-big-crypto-breakthrough",
+     "date": "2024-12-15"
+    },
+    {
+     "label": "Analytics Insight: \"We charge $110 for press release distribution\"",
+     "url": "https://www.analyticsinsight.net/test-new/",
+     "date": "2023-08-26"
+    },
+    {
+     "label": "kaspa.org: \"No premine. No hidden allocation. Fair launch.\"",
+     "url": "https://kaspa.org/",
+     "date": "2026-10-22"
+    }
+   ]
+  }
  ]
 }

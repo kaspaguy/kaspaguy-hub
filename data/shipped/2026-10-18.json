@@ -1,0 +1,8 @@
+{
+ "week_ending": "2026-10-18",
+ "compiled": "2026-10-22",
+ "items": [
+  {"project": "KaChat", "what": "Android app 5.2.1 released (13 Oct).",
+   "sources": [{"label": "release", "url": "https://github.com/KaspaSilver/KaChat-Android/releases/tag/5.2.1"}]}
+ ]
+}

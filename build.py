@@ -101,7 +101,20 @@ def validate(site, projects, shipped, roadmap, scams, lookalikes):
             if not r.get("note"):
                 errs.append(f"projects/{p['id']}.json: related {r.get('id')!r} needs a note saying how")
     for s in shipped:
-        check_date(s.get("week_ending"), f"shipped/{s.get('_file')}", errs)
+        w = f"shipped/{s.get('_file')}"
+        if s.get("in_progress"):
+            # the current week: week_ending is the coming Sunday, "updated" is when we last added to it
+            check_date(s.get("updated"), w + " updated", errs)
+            try:
+                left = (dt.date.fromisoformat(s["week_ending"]) - TODAY).days
+                if not 0 <= left <= 6:
+                    errs.append(f"{w}: in_progress week must end within the next 6 days (publish it as done)")
+            except (KeyError, TypeError, ValueError):
+                errs.append(f"{w}: bad week_ending {s.get('week_ending')!r}")
+        else:
+            check_date(s.get("week_ending"), w, errs)
+        if s.get("compiled"):
+            check_date(s["compiled"], w + " compiled", errs)
         for it in s.get("items", []):
             if not it.get("sources"):
                 errs.append(f"shipped/{s['_file']}: every item needs a source ({it.get('what')!r})")
@@ -195,8 +208,8 @@ Every page is built from {repo}, so every change is a public commit.
 # ---------- pages ----------
 
 def p_home(site, projects, shipped):
-    last = shipped[0]["week_ending"] if shipped else None
-    pulse = (f"Last weekly log: {age_span(last, 8, 21, 'week ending')}." if last
+    last = next((x["week_ending"] for x in shipped if not x.get("in_progress")), None)
+    pulse = (f"Last full week logged: {age_span(last, 8, 21, 'week ending')}." if last
              else "The weekly log starts at launch.")
     return f"""
 <h1>What's being built on Kaspa, with the evidence.</h1>
@@ -331,29 +344,41 @@ def p_shipped(shipped):
             items = "".join(
                 f"<li><strong>{e(it.get('project', ''))}</strong> {e(it['what'])} "
                 + " ".join(link(x["label"], x["url"]) for x in it["sources"]) + "</li>" for it in s.get("items", []))
-            parts.append(f'<section class="card" id="w{e(s["week_ending"])}"><h3>Week ending {e(s["week_ending"])}</h3>'
+            when = (f'This week, to {e(s["week_ending"])} <span class="pill">in progress</span>' if s.get("in_progress")
+                    else f'Week ending {e(s["week_ending"])}')
+            if s.get("in_progress"):
+                when += f'<br><span class="small muted">Last added to on {e(s["updated"])}.</span>'
+            elif s.get("compiled") and s["compiled"] > s["week_ending"]:
+                when += f'<br><span class="small muted">Compiled afterwards, on {e(s["compiled"])}, from dated public sources.</span>'
+            parts.append(f'<section class="card" id="w{e(s["week_ending"])}"><h3>{when}</h3>'
                          + (f"<ul>{items}</ul>" if items else f"<p class='muted'>{e(s.get('note') or 'Nothing shipped that we could verify.')}</p>")
                          + "</section><div style='height:14px'></div>")
         body = "".join(parts)
-    head = (f"Latest: {age_span(shipped[0]['week_ending'], 8, 21, 'week ending')}." if shipped else "")
+    done = [s for s in shipped if not s.get("in_progress")]
+    head = (f"Latest full week: {age_span(done[0]['week_ending'], 8, 21, 'week ending')}." if done else "")
     return f"""<h1>What shipped</h1>
 <p class="lead">Every week, a short, dated list of what actually went live on Kaspa, each line with its source.
-A quiet week says so. A missed week shows as a gap.</p><p class="muted small">{head}</p>{body}"""
+A quiet week says so. A missed week shows as a gap.</p>
+<p class="small muted">"Went live" means released, activated or formally adopted. Code merged but not yet released
+doesn't count, and neither does an announcement.</p><p class="muted small">{head}</p>{body}"""
 
 
 def p_roadmap(roadmap):
     legend = "".join(f"<li><strong>{k}</strong>: {e(v)}</li>" for k, v in ROADMAP_LABELS.items())
     if roadmap:
         rows = "".join(
-            f"<tr><td>{e(r['feature'])}</td><td><strong>{e(r['label'])}</strong></td><td>{e(r.get('note', ''))}</td>"
-            f"<td>{' '.join(link(x['label'], x['url']) for x in r['sources'])}</td></tr>" for r in roadmap)
-        table = (f'<div class="tablewrap"><table class="table"><tr><th>Feature</th><th>Label</th><th>Notes</th>'
+            f"<tr><td data-label='Feature'>{e(r['feature'])}</td><td data-label='Label'><strong>{e(r['label'])}</strong></td>"
+            f"<td data-label='Notes'>{e(r.get('note', ''))}</td>"
+            f"<td data-label='Sources'>{' · '.join(link(x['label'], x['url']) for x in r['sources'])}</td></tr>" for r in roadmap)
+        table = (f'<div class="tablewrap"><table class="table stack"><tr><th>Feature</th><th>Label</th><th>Notes</th>'
                  f'<th>Sources</th></tr>{rows}</table></div>')
     else:
         table = '<div class="empty">The roadmap table is being sourced. Every item will link to the people building it.</div>'
     return f"""<h1>Roadmap</h1>
 <p class="lead">Kaspa protocol features, each with a label and a source, so you can tell what's live from what's
-only talked about.</p><ul>{legend}</ul>{table}"""
+only talked about.</p><ul>{legend}</ul>
+<p class="small muted">When a target date passes, we keep the old target on the page, link to where it was published
+and say that it was missed. Targets quietly disappearing is exactly what makes Kaspa's roadmap hard to follow.</p>{table}"""
 
 
 SCAM_SECTIONS = [

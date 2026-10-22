@@ -1,0 +1,8 @@
+{
+ "week_ending": "2026-10-04",
+ "compiled": "2026-10-22",
+ "items": [
+  {"project": "KCC-1 and KCC-2", "what": "The covenant layout and ABI convention (KCC-1) and the authority schemes convention (KCC-2) moved to Last Call, the final review stage (1 Oct).",
+   "sources": [{"label": "KCC-1 change", "url": "https://github.com/kaspanet/kccs/pull/32"}, {"label": "KCC-2 change", "url": "https://github.com/kaspanet/kccs/pull/33"}]}
+ ]
+}

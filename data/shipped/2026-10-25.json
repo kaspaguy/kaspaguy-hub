@@ -1,0 +1,29 @@
+{
+ "week_ending": "2026-10-25",
+ "in_progress": true,
+ "updated": "2026-10-22",
+ "items": [
+  {
+   "project": "KCC-1, KCC-2 and KCC-20",
+   "what": "All three became Final (21 Oct). Covenant apps and KCC-20 tokens now have fixed conventions to build against. A KCC is a convention that builders agree on, not a consensus rule.",
+   "sources": [
+    {
+     "label": "KCC-1",
+     "url": "https://github.com/kaspanet/kccs/pull/39"
+    },
+    {
+     "label": "KCC-2",
+     "url": "https://github.com/kaspanet/kccs/pull/40"
+    },
+    {
+     "label": "KCC-20",
+     "url": "https://github.com/kaspanet/kccs/pull/41"
+    },
+    {
+     "label": "KCC list",
+     "url": "https://github.com/kaspanet/kccs"
+    }
+   ]
+  }
+ ]
+}

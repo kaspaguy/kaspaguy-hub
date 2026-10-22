@@ -1,0 +1,12 @@
+{
+ "week_ending": "2026-09-27",
+ "compiled": "2026-10-22",
+ "items": [
+  {"project": "Rusty Kaspa", "what": "v2.1.0 released (22 Sep), the node software most of the network runs. It adds peer-to-peer protocol v11 with chunked initial sync, security hardening and a standalone ZK SDK.",
+   "sources": [{"label": "release notes", "url": "https://github.com/kaspanet/rusty-kaspa/releases/tag/v2.1.0"}]},
+  {"project": "Kaspa Python SDK", "what": "v2.1.0 released (24 Sep).",
+   "sources": [{"label": "release", "url": "https://github.com/kaspanet/kaspa-python-sdk/releases/tag/v2.1.0"}]},
+  {"project": "KCC-0", "what": "The document that defines how Kaspa app conventions (KCCs) are proposed and adopted became Final (21 Sep).",
+   "sources": [{"label": "change", "url": "https://github.com/kaspanet/kccs/pull/25"}]}
+ ]
+}

@@ -1,0 +1,8 @@
+{
+ "week_ending": "2026-10-11",
+ "compiled": "2026-10-22",
+ "items": [
+  {"project": "KCC-20", "what": "The fungible token convention for covenants moved to Last Call (7 Oct).",
+   "sources": [{"label": "change", "url": "https://github.com/kaspanet/kccs/pull/31"}]}
+ ]
+}

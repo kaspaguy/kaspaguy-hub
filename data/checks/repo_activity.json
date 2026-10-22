@@ -1,0 +1,41 @@
+{
+ "checked": "2026-10-22",
+ "repos": {
+  "https://github.com/vsmirn0v/KaChat": {
+   "pushed": "2026-10-22",
+   "archived": false
+  },
+  "https://github.com/KaspaSilver/KaChat-Android": {
+   "pushed": "2026-10-21",
+   "archived": false,
+   "release": {
+    "tag": "5.2.1",
+    "date": "2026-10-13"
+   }
+  },
+  "https://github.com/KaspaSilver/KaChat-Desktop": {
+   "pushed": "2026-10-22",
+   "archived": false
+  },
+  "https://github.com/KaspaSilver/KaChat-Indexer": {
+   "pushed": "2026-10-22",
+   "archived": false
+  },
+  "https://github.com/KaspaSilver/kachat-domains": {
+   "pushed": "2026-10-18",
+   "archived": false
+  },
+  "https://github.com/K-Kluster/Kasia": {
+   "pushed": "2026-06-27",
+   "archived": false,
+   "release": {
+    "tag": "v0.6.2",
+    "date": "2025-10-09"
+   }
+  },
+  "https://github.com/K-Kluster/kasia-indexer": {
+   "pushed": "2026-02-01",
+   "archived": false
+  }
+ }
+}

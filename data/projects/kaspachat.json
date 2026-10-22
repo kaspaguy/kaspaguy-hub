@@ -3,10 +3,20 @@
  "name": "KaspaChat",
  "category": "messaging",
  "summary": "Private messenger on Kaspa. Messages are end-to-end encrypted, and who talks to whom stays private too. You sign up with a 24-word recovery phrase, not a phone number or email.",
- "builder": {"name": "Kaspaguy", "url": "https://kaspaguy.com"},
+ "builder": {
+  "name": "Kaspaguy",
+  "url": "https://kaspaguy.com"
+ },
+ "relationship": "self",
  "official_links": [
-  {"label": "kaspachat.com", "url": "https://kaspachat.com"},
-  {"label": "Protocol: kaspaveil.com", "url": "https://kaspaveil.com"}
+  {
+   "label": "kaspachat.com",
+   "url": "https://kaspachat.com"
+  },
+  {
+   "label": "Protocol: kaspaveil.com",
+   "url": "https://kaspaveil.com"
+  }
  ],
  "status": "testnet",
  "status_note": "Runs on Kaspa testnet-10. Not on mainnet yet.",
@@ -14,13 +24,39 @@
  "self_claimed_note": "We build it, and nobody independent has checked it yet.",
  "last_verified": "2026-10-21",
  "evidence": [
-  {"kind": "app", "label": "Testnet app", "url": "https://testnet.kaspachat.com", "public": false, "note": "password-locked until launch"},
-  {"kind": "docs", "label": "Kaspaveil specification", "url": "https://kaspaveil.com/spec.html", "public": false, "note": "password-locked until launch"},
-  {"kind": "contracts", "label": "Kaspaveil contracts", "url": "https://kaspaveil.com/contracts.html", "public": false, "note": "password-locked until launch"}
+  {
+   "kind": "app",
+   "label": "Testnet app",
+   "url": "https://testnet.kaspachat.com",
+   "public": false,
+   "note": "password-locked until launch"
+  },
+  {
+   "kind": "docs",
+   "label": "Kaspaveil specification",
+   "url": "https://kaspaveil.com/spec.html",
+   "public": false,
+   "note": "password-locked until launch"
+  },
+  {
+   "kind": "contracts",
+   "label": "Kaspaveil contracts",
+   "url": "https://kaspaveil.com/contracts.html",
+   "public": false,
+   "note": "password-locked until launch"
+  }
  ],
  "repos": [],
- "code": {"open": "partial", "licence": "AGPL-3.0", "note": "The protocol and its contracts are open source. The KaspaChat apps and Kaspaguy's servers are closed source."},
- "audit": {"status": "none", "note": "Our own review only.", "links": []},
+ "code": {
+  "open": "partial",
+  "licence": "AGPL-3.0",
+  "note": "The protocol and its contracts are open source. The KaspaChat apps and Kaspaguy's servers are closed source."
+ },
+ "audit": {
+  "status": "none",
+  "note": "Our own review only.",
+  "links": []
+ },
  "kcc": null,
  "token": null,
  "conflict": "Kaspaguy builds this. It competes with other Kaspa messengers listed here."

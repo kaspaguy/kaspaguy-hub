@@ -15,7 +15,8 @@ The site is static and built from the JSON in `data/`. Updating it means making 
 | `data/lookalikes.json` | The "which one is this?" table on the KaspaChat page |
 | `site/` | Static assets copied as-is (style.css, icon.svg) |
 | `build.py` | Validates `data/` and writes `dist/` |
-| `scripts/check_staleness.py` | Lists overdue entries and quiet or archived GitHub repos |
+| `scripts/check_staleness.py` | Lists overdue verifications (action) and quiet repos (information); writes `data/checks/repo_activity.json` |
+| `scripts/find_payload_txs.py` | Scans our own mainnet node for transactions carrying a project's payload marker |
 
 ## Workflow
 
@@ -35,6 +36,16 @@ python3 scripts/check_staleness.py
 - `evidence` is a list of `{label, url, public, note}`. At least one is required.
 - `repos` lists GitHub repos for the staleness check, as `https://github.com/owner/name`.
 - `code`, `audit`, `kcc`, `token` and `conflict`: see `data/projects/kaspachat.json`.
+- `relationship` is `self`, `competitor` or `none`, and is shown as a label on the card.
+- `related` is a list of `{id, note}` saying how this entry relates to another entry, such as a shared message format.
+- `evidence_caveat` is optional. It is shown first on the card, for evidence that proves less than it seems to.
+
+Only `last_verified` changes a card's colour. Code activity in `data/checks/repo_activity.json`, written by
+`scripts/check_staleness.py`, is shown as information and never as a warning.
+
+`data/scams.json` has three sections: `confirmed`, `unverified` and `label`. Every item needs `name`, `what`, `added`
+and dated `sources`. A `confirmed` item needs at least one source marked `third_party: true`, and an `unverified` item
+needs an `unknown` line.
 
 Every external link must be https. Dates can't be in the future. Every weekly-log item and every roadmap item needs a
 source. The build stops on any of these errors.

@@ -78,3 +78,5 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .
   .table.stack td { display: block; border: 0; padding: 4px 0; }
   .table.stack td::before { content: attr(data-label); display: block; font-size: 12px; color: var(--muted); font-weight: 600; }
 }
+.pill.rel { color: var(--accent); border-style: dashed; text-transform: none; letter-spacing: 0; font-weight: 600; }
+.caveat { border-left: 3px solid var(--muted); padding: 6px 12px; background: var(--bg); border-radius: 0 8px 8px 0; font-size: 15px; }

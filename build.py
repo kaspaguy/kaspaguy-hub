@@ -25,6 +25,8 @@ STATUSES = {
     "mainnet": "Running on Kaspa mainnet with real KAS.",
     "abandoned": "No activity for 180+ days, or the builders say it has stopped.",
 }
+# How the project relates to Kaspaguy. Shown as a label on the card so the conflict is visible, not just disclosed.
+RELATIONSHIPS = {"self": "our project", "competitor": "competes with KaspaChat", "none": None}
 AUDITS = {"none": "No external audit", "internal": "Internal review only", "external": "External audit"}
 ROADMAP_LABELS = {
     "live": "On mainnet now.",
@@ -65,7 +67,7 @@ def validate(site, projects, shipped, roadmap, scams, lookalikes):
     ids = set()
     for p in projects:
         w = f"projects/{p.get('id')}.json"
-        for k in ("id", "name", "category", "summary", "builder", "status", "self_claimed", "last_verified",
+        for k in ("id", "name", "category", "summary", "builder", "relationship", "status", "self_claimed", "last_verified",
                   "evidence", "code", "audit"):
             if k not in p:
                 errs.append(f"{w}: missing {k}")
@@ -74,6 +76,8 @@ def validate(site, projects, shipped, roadmap, scams, lookalikes):
         ids.add(p.get("id"))
         if p.get("category") not in cats:
             errs.append(f"{w}: unknown category {p.get('category')!r} (add it to site.json)")
+        if p.get("relationship") not in RELATIONSHIPS:
+            errs.append(f"{w}: relationship must be one of {list(RELATIONSHIPS)}")
         if p.get("status") not in STATUSES:
             errs.append(f"{w}: status must be one of {list(STATUSES)}")
         if p.get("audit", {}).get("status") not in AUDITS:
@@ -90,6 +94,12 @@ def validate(site, projects, shipped, roadmap, scams, lookalikes):
                 errs.append(f"{w}: repos must be https://github.com/owner/name ({r})")
         if not p.get("self_claimed") and all(not x.get("public", True) for x in p.get("evidence", [])):
             errs.append(f"{w}: no public evidence, so self_claimed must be true")
+    for p in projects:
+        for r in p.get("related", []):
+            if r.get("id") not in ids:
+                errs.append(f"projects/{p['id']}.json: related id {r.get('id')!r} is not in the ledger")
+            if not r.get("note"):
+                errs.append(f"projects/{p['id']}.json: related {r.get('id')!r} needs a note saying how")
     for s in shipped:
         check_date(s.get("week_ending"), f"shipped/{s.get('_file')}", errs)
         for it in s.get("items", []):
@@ -100,8 +110,23 @@ def validate(site, projects, shipped, roadmap, scams, lookalikes):
             errs.append(f"roadmap: {r.get('feature')!r} label must be one of {list(ROADMAP_LABELS)}")
         if not r.get("sources"):
             errs.append(f"roadmap: {r.get('feature')!r} needs a source")
-    for d in scams.get("domains", []):
-        check_date(d.get("first_seen"), f"scams: {d.get('domain')}", errs)
+    for key, _, _ in SCAM_SECTIONS:
+        for d in scams.get(key, []):
+            w = f"scams.json {key}: {d.get('name')}"
+            for k in ("name", "what", "added", "sources"):
+                if not d.get(k):
+                    errs.append(f"{w}: missing {k}")
+            check_date(d.get("added"), w, errs)
+            for x in d.get("sources", []):
+                check_url(x.get("url"), w, errs)
+                check_date(x.get("date"), f"{w} source", errs)
+            if key == "confirmed" and not any(x.get("third_party") for x in d.get("sources", [])):
+                errs.append(f"{w}: confirmed phishing needs a documented third-party report (third_party: true)")
+            if key == "unverified" and not d.get("unknown"):
+                errs.append(f"{w}: say what we don't know yet (unknown)")
+    for k in scams:
+        if k not in {x[0] for x in SCAM_SECTIONS}:
+            errs.append(f"scams.json: unknown section {k!r}")
     check_date(lookalikes.get("checked"), "lookalikes.json", errs)
     for x in lookalikes.get("items", []):
         # a quote without a date is a future correction: project blurbs change
@@ -208,8 +233,30 @@ so use them too:</p>
 """
 
 
-def entry_card(p, site):
+def code_activity(p, activity):
+    """Information only: quiet code is often a finished app, so this never changes the card's colour."""
+    out = []
+    for r in p.get("repos", []):
+        a = activity.get("repos", {}).get(r)
+        if not a:
+            continue
+        line = f"{e(r.removeprefix('https://github.com/'))}: last change {age_span(a['pushed'], 10**6, 10**6, '')}"
+        if a.get("release"):
+            line += f", latest release {e(a['release']['tag'])} ({e(a['release']['date'])})"
+        if a.get("archived"):
+            line += " (archived by its owner)"
+        out.append(f"<li>{line}</li>")
+    if not out:
+        return None
+    return (f"<ul style='margin:0;padding-left:18px'>{''.join(out)}</ul>"
+            f"<span class='small muted'>Read from GitHub {e(activity['checked'])}. Information, not a verdict.</span>")
+
+
+def entry_card(p, site, activity=None, names=None):
     flags = ['<span class="pill flag">self-claimed</span>'] if p["self_claimed"] else []
+    rel = RELATIONSHIPS[p["relationship"]]
+    if rel:
+        flags.append(f'<span class="pill rel">{e(rel)}</span>')
     ev = "".join(
         f'<li>{link(x["label"], x["url"])}{"" if x.get("public", True) else " <span class=muted>(not public: " + e(x.get("note", "private")) + ")</span>"}</li>'
         for x in p["evidence"])
@@ -231,35 +278,43 @@ def entry_card(p, site):
         ("Official links", off or '<span class="muted">none</span>'),
         ("Evidence", f"<ul style='margin:0;padding-left:18px'>{ev}</ul>"),
         ("Code", code_s + (f"<ul style='margin:0;padding-left:18px'>{repos}</ul>" if repos else "")),
+        ("Code activity", code_activity(p, activity or {})),
         ("Audit", au_s),
         ("KCC standard", e(p["kcc"]) if p.get("kcc") else '<span class="muted">none declared</span>'),
         ("Token", e(p["token"]) if p.get("token") else '<span class="muted">none</span>'),
     ]
     if p["self_claimed"]:
         rows.insert(2, ("Self-claimed", e(p.get("self_claimed_note") or "Only the builders' own statements back this up so far.")))
+    if p.get("related"):
+        rows.append(("Related", "<br>".join(
+            f'<a href="#{e(r["id"])}">{e((names or {}).get(r["id"], r["id"]))}</a>: {e(r["note"])}' for r in p["related"])))
     if p.get("conflict"):
         rows.append(("Our interest", e(p["conflict"])))
-    dl = "".join(f"<dt>{k}</dt><dd>{v}</dd>" for k, v in rows)
+    dl = "".join(f"<dt>{k}</dt><dd>{v}</dd>" for k, v in rows if v is not None)
     return f"""<article class="card entry" id="{e(p['id'])}"><header><h3>{e(p['name'])}</h3>
 <span class="pill {e(p['status'])}">{e(p['status'])}</span>{''.join(flags)}</header>
-<p>{e(p['summary'])}</p><dl>{dl}</dl></article>"""
+<p>{e(p['summary'])}</p>{f'<p class="caveat"><strong>Read this first:</strong> {e(p["evidence_caveat"])}</p>' if p.get("evidence_caveat") else ""}<dl>{dl}</dl></article>"""
 
 
-def p_ledger(site, projects):
+def p_ledger(site, projects, activity):
+    names = {p["id"]: p["name"] for p in projects}
     legend = "".join(f'<li><span class="pill {k}">{k}</span> {e(v)}</li>' for k, v in STATUSES.items())
     out = [f"""<h1>The ledger</h1>
 <p class="lead">Kaspa projects, each with its stage, the date we last checked it and the evidence. Sorted A to Z,
 never by who paid or who we like.</p>
 <ul style="list-style:none;padding:0">{legend}
-<li><span class="pill flag">self-claimed</span> Only the builders' own statements back this up so far.</li></ul>
+<li><span class="pill flag">self-claimed</span> Only the builders' own statements back this up so far.</li>
+<li><span class="pill rel">our project</span> <span class="pill rel">competes with KaspaChat</span> How the project relates to
+us. <a href="/trust#conflict">Why we label it</a>.</li></ul>
 <p class="small muted">We re-check every entry at least monthly. A check older than {site['overdue_days']} days turns
-yellow, and one older than {site['stale_days']} days turns red, so you can see when we fall behind.
+yellow, and one older than {site['stale_days']} days turns red, so you can see when we fall behind. The colour is about
+our checking, never about the project: quiet code is shown as information only.
 <a href="/trust#rules">Full rules</a>.</p>"""]
     for c in site["categories"]:
         ps = sorted((p for p in projects if p["category"] == c["id"] and p["status"] != "abandoned"),
                     key=lambda p: p["name"].lower())
         out.append(f'<h2 id="{e(c["id"])}">{e(c["title"])}</h2>')
-        out.append("".join(entry_card(p, site) + "<div style='height:14px'></div>" for p in ps)
+        out.append("".join(entry_card(p, site, activity, names) + "<div style='height:14px'></div>" for p in ps)
                    or '<div class="empty">No entries yet.</div>')
     if len(projects) == 1:
         out.append('<div class="notice">The first entry is our own, so you can see the rules applied to us before '
@@ -301,24 +356,56 @@ def p_roadmap(roadmap):
 only talked about.</p><ul>{legend}</ul>{table}"""
 
 
+SCAM_SECTIONS = [
+    ("confirmed", "Confirmed phishing",
+     "Sites built to steal recovery phrases or funds. Listed only with a documented report from someone other than us, "
+     "such as a phishing database or a security firm."),
+    ("unverified", "Impersonation and unverified domains",
+     "Lookalike names and domains we can't yet confirm either way. Being here is not an accusation. Each one says what "
+     "we know, what we don't, and what would settle it."),
+    ("label", "Riding the Kaspa name",
+     "Projects that aren't part of Kaspa but are marketed with its name, often through paid articles. We describe what "
+     "they are, with sources, and nothing more."),
+]
+
+
+def scam_item(d, key):
+    src = " · ".join(link(f"{x['label']} ({x['date']})", x["url"]) for x in d["sources"])
+    body = [f"<p>{e(d['what'])}</p>"]
+    if key == "unverified":
+        body.append(f"<p class='small'><strong>Not known yet:</strong> {e(d['unknown'])}</p>")
+    return (f"<div class='card'><h3><code>{e(d['name'])}</code></h3>{''.join(body)}"
+            f"<p class='small muted'>Added {e(d['added'])}. Sources: {src}</p></div><div style='height:12px'></div>")
+
+
 def p_scams(scams, projects, site):
-    dom = "".join(f"<tr><td><code>{e(d['domain'])}</code></td><td>{e(d.get('pretends_to_be', ''))}</td>"
-                  f"<td>{e(d['first_seen'])}</td><td>{' '.join(link(x['label'], x['url']) for x in d.get('sources', []))}</td></tr>"
-                  for d in scams.get("domains", []))
-    imp = "".join(f"<li>{e(i['what'])} {' '.join(link(x['label'], x['url']) for x in i.get('sources', []))}</li>"
-                  for i in scams.get("impersonation", []))
+    sections = []
+    for key, title, intro in SCAM_SECTIONS:
+        items = "".join(scam_item(d, key) for d in scams.get(key, []))
+        sections.append(f"<h2 id='{key}'>{e(title)}</h2><p class='muted small'>{e(intro)}</p>"
+                        + (items or '<div class="empty">None listed yet.</div>'))
     dead = [p for p in projects if p["status"] == "abandoned"]
     return f"""<h1>Scams &amp; graveyard</h1>
-<p class="lead">Fake sites, impersonators and projects that stopped. Nobody official keeps a list like this for
-Kaspa, so we do.</p>
+<p class="lead">Fake sites, impersonators, projects borrowing Kaspa's name, and projects that stopped. Nobody official
+keeps a list like this for Kaspa, so we do.</p>
 <div class="notice">Kaspa developers, wallet makers and Kaspaguy will never message you first, ask for your recovery
 phrase or offer to recover lost funds. Anyone who does is a scammer.</div>
-<h2>Phishing domains</h2>
-{'<div class="tablewrap"><table class="table"><tr><th>Domain</th><th>Pretends to be</th><th>First seen</th><th>Source</th></tr>' + dom + '</table></div>' if dom else '<div class="empty">None listed yet.</div>'}
-<h2>Impersonation</h2>{'<ul>' + imp + '</ul>' if imp else '<div class="empty">None listed yet.</div>'}
-<h2>Graveyard</h2>
+<div class="notice"><strong>Listed by mistake?</strong> Email {e(site['corrections'])} with your evidence. We look at
+every request within a week, and a confirmed mistake comes off the page the same day, with the change visible in our
+public history.</div>
+<h2>How this page works</h2>
+<p>This page accuses people, so its rules are stricter than the ledger's:</p>
+<ul>
+<li>A domain goes under <strong>confirmed phishing</strong> only with a documented report from someone other than us.
+Our own suspicion is never enough.</li>
+<li>Anything we can't confirm goes under <strong>unverified</strong>, with what we don't know written out.</li>
+<li>Every claim carries the date we added it and dated sources.</li>
+<li>We describe what happened. We don't guess at anyone's motives.</li>
+</ul>
+{''.join(sections)}
+<h2 id="graveyard">Graveyard</h2>
 <p class="muted small">Projects from the ledger marked abandoned. They stay here so you can check before you send them
-money.</p>{''.join(entry_card(p, site) for p in dead) or '<div class="empty">None yet.</div>'}"""
+money.</p>{''.join(entry_card(p, site, None, {q["id"]: q["name"] for q in projects}) for p in dead) or '<div class="empty">None yet.</div>'}"""
 
 
 def p_kaspachat(site, lookalikes):
@@ -328,7 +415,7 @@ def p_kaspachat(site, lookalikes):
 <td data-label="Code">Protocol: {link("kaspaveil.com", "https://kaspaveil.com", external=False)}</td><td data-label="Made by">Kaspaguy</td></tr>"""]
     for x in lookalikes["items"]:
         code = " ".join(link(u.removeprefix("https://github.com/"), u) for u in x["code"])
-        rows.append(f"""<tr><td data-label="Name"><strong>{e(x['name'])}</strong></td><td data-label="What it says it is">“{e(x['says'])}”<br><span class="small muted">quoted from {link(x['says_source'].removeprefix('https://'), x['says_source'])}, {e(x['says_date'])}</span></td>
+        rows.append(f"""<tr><td data-label="Name"><strong>{e(x['name'])}</strong>{'<br><span class="small muted">' + e(x['relation']) + '</span>' if x.get('relation') else ''}</td><td data-label="What it says it is">“{e(x['says'])}”<br><span class="small muted">quoted from {link(x['says_source'].removeprefix('https://'), x['says_source'])}, {e(x['says_date'])}</span></td>
 <td data-label="Official site">{link(x['site'].removeprefix('https://'), x['site'])}</td>
 <td data-label="Code">{code}{'<br>' if code else ''}<span class="small muted">{e(x.get('code_note', ''))}</span></td><td data-label="Made by">{e(x['maker'])}</td></tr>""")
     return f"""<h1>KaspaChat</h1>
@@ -395,16 +482,34 @@ team, or the team says it has stopped. These move to the <a href="/scams">gravey
 documentation, then an independent write-up. If the only backing is the builders' own announcement, the entry carries
 a <span class="pill flag">self-claimed</span> flag until someone independent can confirm it.</p>
 
-<h2>Dates and staleness</h2>
+<h2 id="dates">Two dates, two meanings</h2>
+<p>Each entry shows two different dates, and they mean different things:</p>
 <ul>
-<li>"Last verified" is the day we opened the evidence ourselves, not the day someone told us about it.</li>
-<li>We re-check every entry at least once a month. A check older than {site['overdue_days']} days shows in yellow,
-and one older than {site['stale_days']} days in red. These ages update in your browser, so a page we forgot to rebuild
-still shows its age.</li>
-<li>A script checks each listed GitHub repository and flags any with no new code for {site['repo_quiet_days']} days,
-so we know what to re-check first.</li>
-<li>The weekly "what shipped" log is dated. If we miss a week, you'll see the gap.</li>
+<li><strong>Last verified</strong> is the day we opened the evidence ourselves, not the day someone told us about it.
+This is the only date that changes colour. We re-check every entry at least once a month. A check older than
+{site['overdue_days']} days shows in yellow, and one older than {site['stale_days']} days in red. These ages update in
+your browser, so a page we forgot to rebuild still shows its age. The colour measures us, not the project.</li>
+<li><strong>Code activity</strong> is when the project's public code last changed, read from GitHub. It's information,
+never a warning colour.</li>
 </ul>
+<p><strong>Stale code is information, not a verdict.</strong> An entry can be freshly verified and still have quiet
+code. That's often a mature app, not an abandoned one. A project only becomes "abandoned" under the rule above: no code
+<em>and</em> no on-chain activity for 180 days and no answer from the team, or the team says it has stopped.</p>
+<p>The weekly "what shipped" log is dated too. If we miss a week, you'll see the gap.</p>
+
+<h2 id="method">How we confirm a project is on mainnet</h2>
+<p>Many Kaspa apps mark their transactions with a short prefix in the transaction's data, or use a known contract.
+When an entry cites a mainnet transaction, this is how we found and checked it:</p>
+<ol>
+<li>Find the project's marker in its own public code, so we know what its transactions look like.</li>
+<li>Scan recent blocks on our own Kaspa mainnet node for transactions carrying that marker.</li>
+<li>Confirm each transaction on a public Kaspa explorer, so you can check it without trusting our node.</li>
+<li>Check whether any other project uses the same marker. If one does, we say so on the entry: the transaction then
+proves the format is in use on mainnet, not which app sent it.</li>
+<li>Link the transactions on the entry, with the date we found them.</li>
+</ol>
+<p>We don't take someone else's count or label as evidence, including dashboards we respect. We use them to know where to
+look, then check the chain ourselves. The scanning script is in the data repo, so anyone can repeat the check.</p>
 
 <h2>Audits and standards</h2>
 <p>We don't audit projects. We report what exists: no external audit, internal review only, or an external audit with
@@ -422,6 +527,8 @@ including some in this ledger. Here's how we handle it:</p>
 <li>KaspaChat's entry follows the same rules as every other entry. It carries the self-claimed flag until someone
 independent has checked it, and it shows no external audit until there is one.</li>
 <li>Entries are sorted A to Z. We never rank KaspaChat, or anything else, above another project.</li>
+<li>Every entry carries a relationship label: <span class="pill rel">our project</span> for KaspaChat and
+<span class="pill rel">competes with KaspaChat</span> for its competitors, so you can weigh what we write.</li>
 <li>We describe other messengers in their own words and link to their official sites.</li>
 </ul>
 <p id="holdings"><strong>Kaspaguy holds KAS.</strong> For a site about Kaspa that's not a conflict, but we'd rather you
@@ -467,6 +574,8 @@ def main():
         s["_file"] = f.name
         shipped.append(s)
     roadmap, scams, lookalikes = load("roadmap.json"), load("scams.json"), load("lookalikes.json")
+    act_file = DATA / "checks" / "repo_activity.json"
+    activity = json.loads(act_file.read_text()) if act_file.exists() else {}
     errs = validate(site, projects, shipped, roadmap, scams, lookalikes)
     if errs:
         sys.exit("data errors:\n  " + "\n  ".join(errs))
@@ -478,7 +587,7 @@ def main():
     DIST.mkdir()
     pages = {
         "index": ("Home", p_home(site, projects, shipped), "A dated, sourced record of what's being built on Kaspa. No paid listings."),
-        "ledger": ("The ledger", p_ledger(site, projects), "Kaspa projects with status, last-verified date, evidence and audit status."),
+        "ledger": ("The ledger", p_ledger(site, projects, activity), "Kaspa projects with status, last-verified date, evidence and audit status."),
         "shipped": ("What shipped", p_shipped(shipped), "A weekly, sourced log of what went live on Kaspa."),
         "roadmap": ("Roadmap", p_roadmap(roadmap), "Kaspa protocol features labelled live, targeted, research or unsupported."),
         "scams": ("Scams & graveyard", p_scams(scams, projects, site), "Kaspa phishing domains, impersonators and abandoned projects."),

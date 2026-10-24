@@ -2,7 +2,7 @@
  "name": "Kaspaguy",
  "base_url": "https://kaspaguy.com",
  "staging": false,
- "indexable": false,
+ "indexable": true,
  "contact": "hello@kaspaguy.com",
  "data_repo_url": "https://github.com/kaspaguy/kaspaguy-hub",
  "policy_version": "1.0",

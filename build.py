@@ -217,8 +217,8 @@ def page(site, slug, title, body, desc, listed=True):
 <main><div class="wrap">{body}</div></main>
 <footer><div class="wrap">Kaspaguy keeps a dated, sourced record of what's being built on Kaspa. No paid listings.
 Every page is built from {repo}, so every change is a public commit.
-<a href="/trust">How we work</a> · <a href="/trust#licence">Data CC BY 4.0, code MIT</a> · Contact {e(site["contact"])} · <a href="/trust#privacy">No cookies or trackers</a> · Built {TODAY.isoformat()}</div></footer>
-{AGE_JS}</body></html>
+<a href="/trust">How we work</a> · <a href="/trust#licence">Data CC BY 4.0, code MIT</a> · Contact {e(site["contact"])} · <a href="/privacy">Privacy</a> · No cookies or trackers · Built {TODAY.isoformat()}</div></footer>
+{AGE_JS}<script src="/help-widget.js" data-privacy="/privacy" defer></script></body></html>
 """
 
 
@@ -617,10 +617,33 @@ it came from and the date we copied it, because project descriptions change.</li
 </ul>
 
 <h2 id="privacy">What we record about visitors</h2>
+<p>See our <a href="/privacy">privacy page</a>.</p>
+</div>"""
+
+
+def p_privacy(site):
+    return f"""<div class="doc">
+<h1>Privacy</h1>
+<p class="lead">What Kaspaguy records when you visit, and what happens to questions you ask the help bot.</p>
+
+<h2 id="visitors">What we record about visitors</h2>
 <p>We count page views from our own server logs. The logs don't record IP addresses, and we delete them after
 30 days. What we keep after that is counts only: views per page per day, addresses that came back "not found" (so we
 can fix broken links), and which websites linked to us. This site has no cookies, no trackers and no third-party
 scripts. Requests pass through Cloudflare, which protects the server and handles traffic under its own privacy policy.</p>
+
+<h2 id="help-bot">Help bot</h2>
+<p>The "Ask about Kaspa" button on our websites sends your question to our help service. To find the answer, your
+question and a few matching entries from our FAQ are sent to Anthropic, whose Claude AI model picks the matching answer
+from our human-reviewed FAQ. Anthropic does not receive your internet address or anything else about you. Anthropic
+deletes these questions within 30 days according to its API privacy terms, unless they are flagged for breaking its
+usage policy. We keep your question, the answer and your 👍/👎 for 30 days to improve the FAQ, then delete them. They
+are stored without your internet address. To prevent abuse, the help service counts questions per internet address for
+up to 24 hours. It keeps that count only in memory, in scrambled (hashed) form, and never writes it to disk. Please
+don't type personal details into the help bot.</p>
+
+<h2 id="contact">Questions</h2>
+<p>Write to {e(site["contact"])}.</p>
 </div>"""
 
 
@@ -658,6 +681,7 @@ def main():
         "scams": ("Scams & graveyard", p_scams(scams, projects, site), "Kaspa phishing domains, impersonators and abandoned projects."),
         "kaspachat": ("KaspaChat", p_kaspachat(site, lookalikes), "KaspaChat by Kaspaguy, and how to tell it apart from Kasia and KaChat."),
         "trust": ("Our rules", p_trust(site), "How Kaspaguy sources entries, why there are no paid listings, and our conflict of interest."),
+        "privacy": ("Privacy", p_privacy(site), "What Kaspaguy records about visitors, and what happens to questions asked in the help bot."),
     }
     for slug, (title, body, desc) in pages.items():
         (DIST / f"{slug}.html").write_text(page(site, slug, title, body, desc))

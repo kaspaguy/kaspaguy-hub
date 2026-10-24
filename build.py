@@ -35,7 +35,7 @@ ROADMAP_LABELS = {
     "unsupported": "Claimed around the community, with no source from the people building it.",
 }
 NAV = [("index", "Home"), ("ledger", "Ledger"), ("shipped", "What shipped"), ("roadmap", "Roadmap"),
-       ("scams", "Scams & graveyard"), ("kaspachat", "KaspaChat"), ("trust", "Rules")]
+       ("scams", "Scams & graveyard"), ("kaspachat", "What is KaspaChat"), ("trust", "Rules")]
 
 e = html.escape
 
@@ -471,18 +471,28 @@ def p_kaspachat(site, lookalikes):
 <p class="lead">A private messenger built on Kaspa. You sign up with a 24-word recovery phrase instead of a phone
 number or email. Messages are end-to-end encrypted on your device, and nobody, including us, can read them or see who
 you talk to.</p>
-<p><a class="btn" href="https://kaspachat.com">Go to kaspachat.com</a><a class="btn ghost" href="/ledger#kaspachat">See its ledger entry</a></p>
+<p><a class="btn" href="https://kaspachat.com/download/KaspaChat-android.apk" download>Download for Android (APK)</a><a class="btn ghost" href="https://kaspachat.com">Go to kaspachat.com</a><a class="btn ghost" href="#faq">Questions</a></p>
 
 <h2>Where it stands</h2>
 <div class="grid">
 <div class="card"><h3>Status: testnet</h3><p class="muted">KaspaChat runs on Kaspa testnet-10 and isn't on mainnet
-yet. It runs in your browser on a phone or computer. The Android and iPhone apps aren't released yet.</p></div>
+yet. The Android test app is out as a direct download (APK), and it also runs in your browser. The iPhone app is
+coming soon.</p></div>
 <div class="card"><h3>What's open source</h3><p class="muted">The Kaspaveil protocol (its encryption and test vectors)
 and its contracts are open source under AGPL-3.0 at kaspaveil.com. The KaspaChat apps and Kaspaguy's servers are
 closed source.</p></div>
 <div class="card"><h3>Audit</h3><p class="muted">No external audit yet, only our own review. The ledger will link the
 report when there is one.</p></div>
 </div>
+
+<h2 id="faq">Questions</h2>
+<details><summary>Can you read my messages?</summary><p>No. Messages are encrypted on your device with keys that never leave it. We run no server that could open them.</p></details>
+<details><summary>Can you see who I talk to?</summary><p>No. Recipients are never on the blockchain, and messages sent through our relay don't carry your wallet either. Our relay sees the network address a message is sent from, and keeps no record of it.</p></details>
+<details><summary>What if I lose my phone?</summary><p>Restore with your 24-word recovery phrase on any device: your name and your credits come back. Keep the phrase offline; nobody, including us, can recover it for you.</p></details>
+<details><summary>Why do messages disappear?</summary><p>After 30 hours your app deletes the message and the keys that opened it, on every device in the chat. Anyone can still copy or photograph a message before then.</p></details>
+<details><summary>Do messages disappear from my screen too?</summary><p>Yes, from yours as well as theirs. Each device deletes its own copy 30 hours after the message reached it, so a message you send leaves your screen 30 hours after you sent it. If someone was offline, their copy arrived later and stays a little longer. The only exception is a chat where everyone is on Pro and everyone has agreed to keep messages: then nothing disappears for anyone.</p></details>
+<details><summary>What happens to my name if I stop paying?</summary><p>A Pro name stays yours for 30 days after it expires. After that, the next person who pays for it gets it. Free code names never expire.</p></details>
+<details><summary>Is KaspaChat open source?</summary><p>The parts that keep your messages private are. The Kaspaveil protocol (its encryption and test vectors) and its contracts are open source under AGPL-3.0 and published on kaspaveil.com, so anyone can check them or build another client. The KaspaChat apps and Kaspaguy's servers are closed source.</p></details>
 
 <h2>The only official addresses</h2>
 <ul>

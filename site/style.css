@@ -84,6 +84,9 @@ mark.draft { background: var(--warn-bg); color: inherit; border: 1px dashed var(
 .table th, .table td { text-align: left; vertical-align: top; padding: 10px; border-bottom: 1px solid var(--line); }
 .table th { font-size: 13px; color: var(--muted); font-weight: 600; }
 .doc { max-width: 760px; }
+details { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; margin: 0 0 8px; }
+details summary { cursor: pointer; font-weight: 600; }
+details p { margin: 8px 0 2px; color: var(--muted); }
 .doc li { margin: 4px 0; }
 footer { border-top: 1px solid var(--line); padding: 20px 0 32px; font-size: 14px; color: var(--muted); }
 footer a { color: var(--muted); }

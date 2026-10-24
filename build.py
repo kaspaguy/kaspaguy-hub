@@ -229,7 +229,8 @@ def p_home(site, projects, shipped):
     pulse = (f"Last full week logged: {age_span(last, 8, 21, 'week ending')}." if last
              else "The weekly log starts at launch.")
     return f"""
-<h1>What's being built on Kaspa, with the evidence.</h1>
+<div class="hero"><h1>What's being built on Kaspa, with the evidence.</h1>
+<a class="live" href="https://kaspachat.com/download/KaspaChat-android.apk"><span class="dot"></span>Testnet live now<small>KaspaChat for Android</small></a></div>
 <p class="lead">Kaspaguy builds KaspaChat, a private messenger on Kaspa. We also keep a dated, sourced record of
 what's being built on Kaspa: what stage each project has reached, when we last checked, and the links that prove it.
 No paid listings.</p>

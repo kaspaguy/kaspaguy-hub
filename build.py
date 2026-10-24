@@ -230,7 +230,11 @@ def p_home(site, projects, shipped):
              else "The weekly log starts at launch.")
     return f"""
 <div class="hero"><h1>What's being built on Kaspa, with the evidence.</h1>
-<a class="live" href="https://kaspachat.com/download/KaspaChat-android.apk"><span class="dot"></span>Testnet live now<small>KaspaChat for Android</small></a></div>
+<div class="live"><div class="live-body"><span class="live-tag"><span class="dot"></span>Testnet live now</span>
+<strong>KaspaChat for Android</strong>
+<a class="live-dl" href="https://kaspachat.com/download/KaspaChat-android.apk" download><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Download it now<small>Android APK file, 22 MB. It downloads straight away.</small></a>
+<span class="live-plat"><span>Android version</span><span class="soon">iOS version coming soon</span></span></div>
+<a class="live-qr" href="https://kaspachat.com/download/KaspaChat-android.apk" download><img src="/kaspachat-apk-qr.svg" width="104" height="104" alt="QR code: download the KaspaChat Android APK"><small>Scan to download</small></a></div></div>
 <p class="lead">Kaspaguy builds KaspaChat, a private messenger on Kaspa. We also keep a dated, sourced record of
 what's being built on Kaspa: what stage each project has reached, when we last checked, and the links that prove it.
 No paid listings.</p>

@@ -111,7 +111,7 @@
     form.appendChild(row);
     form.appendChild(meta);
     var fine = el("p", "fine", "Questions are kept for 30 days to improve the FAQ. Please don't include personal details. ");
-    if (/^\/[\w\/#-]*$/.test(PRIVACY)) {
+    if (/^(\/|https:\/\/[\w.-]+\/)[\w\/#-]*$/.test(PRIVACY)) {
       var pl = el("a", null, "Privacy");
       pl.href = PRIVACY;
       fine.appendChild(pl);

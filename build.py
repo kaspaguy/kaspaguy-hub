@@ -16,6 +16,8 @@ import shutil
 import sys
 from pathlib import Path
 
+import kaspachat_pages
+
 ROOT = Path(__file__).resolve().parent
 DATA, SITE, DIST = ROOT / "data", ROOT / "site", ROOT / "dist"
 TODAY = dt.date.today()
@@ -472,6 +474,7 @@ def p_kaspachat(site, lookalikes):
 number or email. Messages are end-to-end encrypted on your device, and nobody, including us, can read them or see who
 you talk to.</p>
 <p><a class="btn" href="https://kaspachat.com/download/KaspaChat-android.apk" download>Download for Android (APK)</a><a class="btn ghost" href="https://kaspachat.com">Go to kaspachat.com</a><a class="btn ghost" href="#faq">Questions</a></p>
+<p>Public testnet: {kaspachat_pages.nav(None).removeprefix('<p class="kc-links">').removesuffix("</p>")}</p>
 
 <h2>Where it stands</h2>
 <div class="grid">
@@ -682,6 +685,7 @@ def main():
         "kaspachat": ("KaspaChat", p_kaspachat(site, lookalikes), "KaspaChat by Kaspaguy, and how to tell it apart from Kasia and KaChat."),
         "trust": ("Our rules", p_trust(site), "How Kaspaguy sources entries, why there are no paid listings, and our conflict of interest."),
         "privacy": ("Privacy", p_privacy(site), "What Kaspaguy records about visitors, and what happens to questions asked in the help bot."),
+        **kaspachat_pages.pages(),
     }
     for slug, (title, body, desc) in pages.items():
         (DIST / f"{slug}.html").write_text(page(site, slug, title, body, desc))

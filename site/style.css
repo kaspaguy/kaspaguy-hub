@@ -101,3 +101,7 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .
 }
 .pill.rel { color: var(--accent); border-style: dashed; text-transform: none; letter-spacing: 0; font-weight: 600; }
 .caveat { border-left: 3px solid var(--muted); padding: 6px 12px; background: var(--bg); border-radius: 0 8px 8px 0; font-size: 15px; }
+.kc-links { font-size: 15px; }
+.kc-status { border: 1px solid var(--line); border-left: 4px solid var(--muted); border-radius: 9px; padding: 10px 14px; font-weight: 600; }
+.kc-status.ok, .kc-status.resolved { border-left-color: var(--accent); }
+.kc-status.problem { border-left-color: var(--warn-line); background: var(--warn-bg); }
